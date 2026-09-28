@@ -1,6 +1,6 @@
 {
  "_about": "Prompt enrichment ported from the old ZImage (apps/zimage/zimage.cpp). Z-Image-Turbo is distilled to CFG=1: words like 'photorealistic' do nothing, MATERIAL words do. When a key appears in the prompt as a word, its fragments are appended (most specific key first) while they fit the token budget. 'front' fragments name things that must EXIST; plain ones describe how things look. Swedish keys point at the same (English) fragments as their English counterparts; inflected forms are listed explicitly.",
- "budget_tokens": 70,
+ "budget_tokens": 90,
  "front": [
   [
    "formula 1",
@@ -2482,7 +2482,7 @@
   ],
   [
    "prinsesstårta",
-   "two green marzipan leaves, low wide rounded dome, dusted with powdered sugar, marzipan lid covering the whole cake down to the plate, one slice cut out revealing sponge, raspberry jam and vanilla cream"
+   "dusted with powdered sugar, covered all over in green marzipan down to the plate, one slice cut out and the cut slice shows yellow sponge with a thin red raspberry jam stripe and thick white vanilla cream, two small green marzipan leaves beside the rose, low wide rounded dome"
   ],
   [
    "spetsgardin",

@@ -173,11 +173,14 @@ NEW = {
     # rosen ligger nu i SUBSTANTIVET (läggs alltid först). Inga negationer ("not glossy" drar in glans).
     # (3) referensbilder: LÅG BRED kupol, liten ros + två gröna blad; insida sockerkaka, hallonsylt,
     # vaniljkräm, grädde under ett grönt marsipanlock. (4) 'inside'-ord ritade lagren UTANPÅ ->
-    # locket täcker hela tårtan; lagren syns bara i en uppskuren bit.
+    # locket täcker hela tårtan; lagren syns bara i en uppskuren bit. (5) 'revealing sponge, jam, cream'
+    # gav bara sockerkaka; 'the cut slice shows the layers: ...' gav sylt+kräm i biten 3/3 seeds.
+    # (6) 'marzipan lid' ritades som ett SEPARAT lock; 'two green marzipan leaves' spreds ut ->
+    # 'covered all over in green marzipan', 'leaves beside the rose'.
     "prinsesstårta": ("a low, matte light-green Swedish princess cake with a small pink marzipan rose",
-                      "two green marzipan leaves, low wide rounded dome, dusted with powdered sugar, "
-                      "marzipan lid covering the whole cake down to the plate, "
-                      "one slice cut out revealing sponge, raspberry jam and vanilla cream"),
+                      "dusted with powdered sugar, covered all over in green marzipan down to the plate, "
+                      "one slice cut out and the cut slice shows yellow sponge with a thin red raspberry jam stripe "
+                      "and thick white vanilla cream, two small green marzipan leaves beside the rose, low wide rounded dome"),
     # platsbundna spetsord: den generiska "fine crochet texture" lade modellen PA tartan
     "spetsgardin": ("lace curtains in the window", "sheer lace, soft backlight"),
     "spetsgardiner": ("lace curtains in the window", "sheer lace, soft backlight"),
@@ -223,7 +226,7 @@ for k in ("kafé", "kafét", "kaféet", "kafe", "café", "kaféer", "kaféerna",
     if k in nouns:
         nouns[k] = "cafe interior"
 c["nouns"] = nouns
-c["budget_tokens"] = 70   # 09-28: 50 -> 70 sa prinsesstartan far plats
+c["budget_tokens"] = 90   # 09-28: 50 -> 70 sa prinsesstartan far plats; 90 sa tartbitens sylt+kram far plats
 c["_about"] = c["_about"].rstrip() + (" Swedish keys point at the same (English) fragments as their English"
                                       " counterparts; inflected forms are listed explicitly.") \
     if "Swedish keys" not in c["_about"] else c["_about"]
