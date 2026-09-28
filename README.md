@@ -1,7 +1,7 @@
 # PulseX — text to image on the Snapdragon NPU
 
-[![Latest release](https://img.shields.io/github/v/release/anvandaren-matrix/pulsex-zimage)](https://github.com/anvandaren-matrix/pulsex-zimage/releases/latest)
-[![License: MIT](https://img.shields.io/github/license/anvandaren-matrix/pulsex-zimage)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/Erik-matrix/pulsex-zimage)](https://github.com/Erik-matrix/pulsex-zimage/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/Erik-matrix/pulsex-zimage)](LICENSE)
 
 PulseX turns a sentence into a picture with **Z-Image-Turbo**, running the diffusion
 transformer on the Hexagon NPU of a Snapdragon X Plus laptop (Windows on ARM) through the PulseX
@@ -52,7 +52,7 @@ the Real-ESRGAN QNN context is compiled for X1 and has to be recompiled for X2.
 [Microsoft Visual C++ Redistributable for ARM64](https://aka.ms/vs/17/release/vc_redist.arm64.exe)
 and Python 3.12 for ARM64 with `pip install -r requirements.txt`.
 
-**Download.** Clone the repository, or take the zip from the [latest release](https://github.com/anvandaren-matrix/pulsex-zimage/releases/latest) — both contain everything in this folder, binaries included.
+**Download.** Clone the repository, or take the zip from the [latest release](https://github.com/Erik-matrix/pulsex-zimage/releases/latest) — both contain everything in this folder, binaries included.
 
 **Prebuilt binaries.** The release repository ships them in `bin/` (llama-server,
 zimage-dit-stream, zimage-encode, ggml, taef1_decode and the DSP skel `libggml-htp-v7x.so` + catalog), plus
