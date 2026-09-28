@@ -151,6 +151,9 @@ a cozy café interior --1024 --enrich --title Open House --sub Saturday 10-14
 zimage repl
 ```
 The models stay loaded, so from the second image on you only pay for the generation.
+
+![The PulseX REPL after one image](docs/repl.png)
+
 Type a prompt and press Enter. Options go at the end of the line:
 
 | Line | What it does |
