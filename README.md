@@ -18,8 +18,9 @@ Typical times on an X Plus: 512 + upscale ~19 s cold and 10–12 s in the REPL; 
 
 ## Examples
 
-All five made on the NPU at native 1024 × 1024 — the prompt is exactly what was typed. Two of
-them are in Swedish; `-Enrich` adds the English words the model needs (see *Making images*).
+All six made on the NPU at native 1024 × 1024 — the prompt is exactly what was typed. Three of
+them are in Swedish; `-Enrich` adds the English words the model needs (see *Making images*). The
+text on the café is drawn afterwards, correctly spelled (see *Text on the picture*).
 
 | | |
 |---|---|
@@ -27,8 +28,8 @@ them are in Swedish; `-Enrich` adds the English words the model needs (see *Maki
 | `zimage make "forsarna i kalixälven under midnattssolen" -Size 1024 -Enrich -Seed 11` | `zimage make "en älg i en snöig granskog under norrskenet" -Size 1024 -Enrich -Seed 11` |
 | ![A woman by a window](docs/examples/woman.jpg) | ![A cat on a windowsill](docs/examples/cat.jpg) |
 | `zimage make "portrait of a young woman with freckles by a window, soft window light" -Size 1024 -Enrich -Seed 4242` | `zimage make "a tabby cat on a windowsill, winter light, snow outside" -Size 1024 -Enrich -Seed 4242` |
-| ![An old man with a hat](docs/examples/man-with-hat.jpg) | |
-| `zimage make "portrait of an old man with a felt hat and a grey beard, warm evening light" -Size 1024 -Enrich -Seed 11` | |
+| ![An old man with a hat](docs/examples/man-with-hat.jpg) | ![An old café with text on the picture](docs/examples/open-house.jpg) |
+| `zimage make "portrait of an old man with a felt hat and a grey beard, warm evening light" -Size 1024 -Enrich -Seed 11` | `zimage make "interiörbild av ett gammalt konditori med kakelugn, spetsgardiner och prinsesstårta på porslin" -Size 1024 -Enrich -Seed 11 -Title "Öppet hus" -Subtitle "Lördag 10–14"` |
 
 The NPU is not bit-deterministic, so the same command gives a nearly — not exactly — identical
 image.
