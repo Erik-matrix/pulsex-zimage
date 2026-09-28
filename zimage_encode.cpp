@@ -33,7 +33,8 @@ LLAMA_API void    llama_set_embeddings_layer_inp(struct llama_context * ctx, uin
 LLAMA_API float * llama_get_embeddings_layer_inp(struct llama_context * ctx, uint32_t lid);
 
 static void quiet_log(enum ggml_log_level level, const char * text, void *) {
-    if (level >= GGML_LOG_LEVEL_ERROR) {
+    static const bool all = getenv("ZI_ENC_LOG") != nullptr;   // ZI_ENC_LOG=1: llama/ggml-loggen (buffertstorlekar)
+    if (all || level >= GGML_LOG_LEVEL_ERROR) {
         fputs(text, stderr);
     }
 }
@@ -63,6 +64,18 @@ int main(int argc, char ** argv) {
         }
         mp.devices      = devs;
         mp.n_gpu_layers = 999;
+        // Utdatalagret (token_embd som lm_head) behovs aldrig - vi laser indata till lager 35, inga
+        // logits. Pa NPU:n var det en kopia pa ~320 MB; pa CPU delar det filvyn med token_embd.
+        static ggml_backend_buffer_type_t cpu_bt =
+            ggml_backend_dev_buffer_type(ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU));
+        static const llama_model_tensor_buft_override ovr[] = {
+            { "^(output|token_embd)\\.weight$", cpu_bt },
+            { nullptr, nullptr },
+        };
+        if (!getenv("ZI_ENC_OUTPUT_NPU")) {
+            mp.tensor_buft_overrides = ovr;
+            mp.use_extra_bufts       = false;   // annars packas kopian om till CPU_REPACK: 304 MB privat = commit
+        }
     } else {
         mp.n_gpu_layers    = 0;
         mp.use_extra_bufts = false;   // no repack: the weights stay in the file cache (== --no-repack)
@@ -75,20 +88,30 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    llama_context_params cp = llama_context_default_params();
-    cp.n_ctx        = 512;
-    cp.n_batch      = 512;
-    cp.n_ubatch     = 512;
-    cp.embeddings   = true;
-    cp.pooling_type = LLAMA_POOLING_TYPE_NONE;
-    llama_context * ctx = llama_init_from_model(model, cp);
+    // Kontexten (graf + KV pa NPU:n) i promptens storlek: 512 token kostade 302 + 72 MB, en prompt
+    // ar ~20-150. Den forsta skapas medan anvandaren skriver (128, ZI_ENC_CTX); ar prompten langre
+    // byggs den om i ratt storlek efter Enter.
+    auto make_ctx = [&](int n) -> llama_context * {
+        llama_context_params cp = llama_context_default_params();
+        cp.n_ctx        = (uint32_t) n;
+        cp.n_batch      = (uint32_t) n;
+        cp.n_ubatch     = (uint32_t) n;
+        cp.embeddings   = true;
+        cp.pooling_type = LLAMA_POOLING_TYPE_NONE;
+        llama_context * c = llama_init_from_model(model, cp);
+        if (c) llama_set_embeddings_layer_inp(c, (uint32_t) layer, true);
+        return c;
+    };
+    const char * ectx = getenv("ZI_ENC_CTX");
+    int ctx_n = ectx ? atoi(ectx) : 128;
+    if (ctx_n < 32) ctx_n = 32;
+    llama_context * ctx = make_ctx(ctx_n);
     if (!ctx) {
         printf("ERROR cannot create context\n");
         fflush(stdout);
         llama_model_free(model);
         return 1;
     }
-    llama_set_embeddings_layer_inp(ctx, (uint32_t) layer, true);
     const int n_embd = llama_model_n_embd(model);
 
     printf("READY\n");
@@ -115,7 +138,13 @@ int main(int argc, char ** argv) {
             std::vector<llama_token> tok(text.size() + 16);
             int n = llama_tokenize(vocab, text.c_str(), (int32_t) text.size(), tok.data(), (int32_t) tok.size(),
                                    /*add_special*/ true, /*parse_special*/ true);
-            if (n < 0 || n > (int) cp.n_ctx) {
+            if (n > ctx_n && n <= 2048) {          // langre prompt: kontexten i ratt storlek
+                llama_free(ctx);
+                ctx_n = (n + 63) / 64 * 64;
+                ctx   = make_ctx(ctx_n);
+                if (!ctx) { printf("ERROR cannot create context (%d)\n", ctx_n); fflush(stdout); llama_model_free(model); return 1; }
+            }
+            if (n < 0 || n > ctx_n) {
                 printf("ERROR tokenize gave %d tokens\n", n);
                 rc = 1;
             } else {
@@ -126,7 +155,7 @@ int main(int argc, char ** argv) {
                     batch.pos[i]       = i;
                     batch.n_seq_id[i]  = 1;
                     batch.seq_id[i][0] = 0;
-                    batch.logits[i]    = true;
+                    batch.logits[i]    = i == n - 1;   // lager-35-kranen tar alla token; logits bara en
                 }
                 batch.n_tokens = n;
                 if (llama_decode(ctx, batch) < 0) {

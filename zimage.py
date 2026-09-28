@@ -125,6 +125,10 @@ _NPU_ENC = None
 def npu_encoder_prestart():
     """REPL: called on the first key of a new prompt - the model loads while you type."""
     global _NPU_ENC
+    # ZI_ENCODER_PRESTART=0: ladda forst vid Enter. For matningar med stdin som ror, dar
+    # "forsta tangenten" annars ar sjalva prompten och encodern syns i varje viloperiod.
+    if os.environ.get("ZI_ENCODER_PRESTART", "1") == "0":
+        return
     if ENC_ON == "NPU" and _NPU_ENC is None and ENCODE_EXE.exists():
         _NPU_ENC = NpuEncoder()
 
