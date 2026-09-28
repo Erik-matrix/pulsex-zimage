@@ -14,7 +14,8 @@ fork of ggml-hexagon. The command is `zimage`; the window and the UI say PulseX.
 | Decoder | taef1 (C++/NEON) or the full Flux VAE | CPU |
 | Upscaler (512 → 1024) | Real-ESRGAN x4, QNN context via ONNX Runtime | NPU |
 
-Typical times on an X Plus: 512 + upscale ~19 s cold and 10–12 s in the REPL; native 1024 ~40 s.
+Typical times on an X Plus: 512 + upscale ~19 s cold and 10–12 s in the REPL; wide 480p
+(848 × 480) ~17 s cold and ~16 s in the REPL; native 1024 ~40 s.
 
 ## Examples
 
@@ -30,6 +31,12 @@ text on the café is drawn afterwards, correctly spelled (see *Text on the pictu
 | `zimage make "portrait of a young woman with freckles by a window, soft window light" -Size 1024 -Enrich -Seed 4242` | `zimage make "a tabby cat on a windowsill, winter light, snow outside" -Size 1024 -Enrich -Seed 4242` |
 | ![An old man with a hat](docs/examples/man-with-hat.jpg) | ![An old café with text on the picture](docs/examples/open-house.jpg) |
 | `zimage make "portrait of an old man with a felt hat and a grey beard, warm evening light" -Size 1024 -Enrich -Seed 11` | `zimage make "interiörbild av ett gammalt konditori med kakelugn, spetsgardiner och prinsesstårta på porslin" -Size 1024 -Enrich -Seed 11 -Title "Öppet hus" -Subtitle "Lördag 10–14"` |
+
+**Wide 480p** — 848 × 480, the frame size many of the newer video models work in:
+
+![A moose on a snowy forest path at night, 848 x 480](docs/examples/moose-480p.jpg)
+
+`zimage make "a large bull moose walking on a snowy forest path at night, snow-covered spruce trees, crescent moon in a starry sky, warm light from a cabin far behind the trees, cinematic" -Size 480p -Seed 7`
 
 The NPU is not bit-deterministic, so the same command gives a nearly — not exactly — identical
 image.
@@ -84,11 +91,19 @@ folder — an earlier image is never overwritten.
 | plain 512, fastest — for trying prompts | `zimage make "a lighthouse at dusk" -NoUp` |
 | force the upscaler on (if the config has it off) | `zimage make "a lighthouse at dusk" -Up` |
 | native 1024 — most detail, for keepers | `zimage make "a lighthouse at dusk" -Size 1024` |
+| wide 480p (848 × 480), no upscaler | `zimage make "a lighthouse at dusk" -Size 480p` |
+| any width × height | `zimage make "a lighthouse at dusk" -Size 1280x720` |
 | another image for the same text | `zimage make "a lighthouse at dusk" -Seed 7` |
 | exact file name (.jpg or .png) | `zimage make "a lighthouse at dusk" -Out lighthouse.png` |
 | JPEG quality | `zimage make "a lighthouse at dusk" -Quality 90` |
 | add material words to the prompt | `zimage make "portrait of an old fisherman" -Enrich` |
 | see where the time goes | `zimage make "a lighthouse at dusk" -Timings` |
+
+**Sizes.** `512` and `1024` are square; `480p` is 848 × 480 and `720p` is 1280 × 720; any
+`WxH` works when both sides are divisible by 16 (the decoder works in 8 × 8 pixel blocks and the
+transformer in 2 × 2 of those), from 256 to 2048. That is why the 854 × 480 of video is 848 × 480
+here. Only 512 goes through the x4 upscaler, which is compiled for exactly 512 × 512. Cost follows
+the pixel count: 848 × 480 is 1.6× the pixels of 512 × 512 and 40 % of 1024 × 1024.
 
 `-Enrich` appends words the model responds to (from `cues.json`), for example
 `portrait` → "skin pores, natural skin texture". The prompt that is actually sent is printed.
@@ -162,6 +177,7 @@ Type a prompt and press Enter. Options go at the end of the line:
 | `a red fox in the snow` | an image with the current settings |
 | `a red fox in the snow --1024` | native 1024 from now on (`--512` goes back) |
 | `a red fox in the snow --size 1024` | the same, long form |
+| `a red fox in the snow --480p` | wide 848 × 480 from now on (`--size 1280x720` for any W×H divisible by 16) |
 | `a red fox in the snow --noup` | plain 512 from now on (`--up` turns the upscaler back on) |
 | `a red fox in the snow --seed 42` | restart the seed sequence at 42 (each image adds 1) |
 | `a red fox in the snow --enrich` | material words on from now on (`--noenrich` turns them off) |
@@ -195,13 +211,15 @@ Every key is documented in `zimage.example.json` (`_help`). Command-line options
 
 | Key | Default | Meaning |
 |---|---|---|
-| `defaults.size` | `512` | `512` or `1024` |
+| `defaults.size` | `512` | `512`, `1024`, `"480p"` (848 × 480), `"720p"` or `"WxH"` with both sides divisible by 16 |
 | `defaults.upscale` | `true` | 512 images go through Real-ESRGAN x4 to `upscale_to` |
 | `defaults.upscale_detail` | `0.5` | 0..1: share of the Real-ESRGAN result; the rest is a plain Lanczos enlargement. 1 is sharpest but can look plastic, 0 is softest. |
 | `defaults.shift` | `1.0` | sigma shift; 1.0 (linear [1, .75, .5, .25]) gave more skin and fur detail than 3.0 on every test prompt |
 | `defaults.encoder` | `npu` | `npu`: loaded on the NPU for each prompt and released right after; `cpu`: a warm server reading the weights from the file cache. See Memory |
 | `defaults.enrich` | `false` | material words on by default |
 | `defaults.unload_after_s` | `60` | REPL: unload the image model after this many idle seconds (0 = never) |
+| `defaults.npu_weight_budget_mb` | `0` | NPU memory for the image model's weights: `0` streams them through two slots (~0.2 GB), `-1` keeps all 3.3 GB on the NPU. See Memory |
+| `defaults.pack_cache` | `true` | store the weights once in the NPU's own tiled layout next to the model (`.hexpack`, 3.5 GB) and just copy them from then on |
 | `defaults.purge_on_start` / `purge_on_exit` | `standby` | empty Windows' standby cache when the REPL starts / on stop and exit: `standby`, `full` (also trim every process's working set) or `off` |
 
 ## Memory
@@ -211,8 +229,8 @@ an X Plus (16 GB):
 
 | Part | Committed |
 |---|---|
-| Diffusion transformer weights | 3.3 GB |
-| its graph buffers (512 / 1024) | 0.15 / 0.6 GB |
+| Diffusion transformer weights | 0.2 GB by default (streamed, see below); 3.3 GB with `npu_weight_budget_mb: -1` |
+| its graph buffers (512 / 480p / 1024) | 0.15 / 0.24 / 0.6 GB |
 | Text encoder on the NPU (default) | 2.8 GB — only for the ~2 s it is loaded; it starts while you type and exits after encoding |
 | Text encoder on the CPU (`-EncoderOn cpu`, `--no-repack`, mmap) | 0.5 GB, for the whole session |
 | Real-ESRGAN session | 0.9 GB — released after every upscale, reopened behind the next DiT run |
@@ -223,6 +241,22 @@ short-lived process (`zimage-encode.exe`): in the REPL it starts loading on the 
 (~1.4 s, hidden behind your typing), encodes when you press Enter (~0.9 s), frees its memory and
 exits cleanly. It is never kept next to the image model. The image model itself is unloaded after
 an idle minute (the next image then takes a few seconds longer).
+
+**The image model's weights stream.** The transformer has 34 blocks of ~97 MB. By default only
+two block-sized slots live on the NPU; each step copies the next block's weights into the free slot
+while the NPU computes on the other. The source is `z-image-turbo-q4_0.hexpack`, a copy of the
+weights already in the NPU's tiled layout — written next to the model the first time (~5 s,
+3.5 GB) and rebuilt by itself when the model file changes. It is read through Windows' file cache,
+which shows as *Cached*, not *Committed*, and which Windows can take back at any time. Measured on
+an X Plus, 4 steps, identical images:
+
+| | all weights on the NPU | streamed (default) |
+|---|---|---|
+| 512 × 512 | 9.7 s, +3.75 GB committed | 8.8 s, +0.64 GB |
+| 1024 × 1024 | 36.4 s, +4.6 GB | 35.6 s, +1.9 GB |
+
+`npu_weight_budget_mb` sits anywhere between: blocks stay on the NPU, in the order they run, while
+they fit under the budget, and the rest stream.
 
 To give PulseX room, the REPL can empty Windows' whole standby cache ("Cached" in Task Manager)
 when it starts and when it closes. That call needs administrator rights, so it only happens when
@@ -243,7 +277,7 @@ cache.
 |---|---|
 | `zimage.ps1` | the CLI: commands, help, encoder-server lifecycle, cache cleanup |
 | `zimage.py` | the engine driver: encoder → DiT → decoder → upscaler, REPL, text overlay |
-| `zimage_stream.cpp` | `zimage-dit-stream.exe`, the DiT on ggml-hexagon (built by the ggml-hexagon tree) |
+| `zimage_stream.cpp` | `zimage-dit-stream.exe`, the DiT on ggml-hexagon (built by the ggml-hexagon tree): weight budget, streaming slots, `.hexpack` cache |
 | `zimage_encode.cpp` | `zimage-encode.exe`, the text encoder as a short-lived NPU process (same build) |
 | `zimage_launch.c`, `zimage.rc`, `zimage.ico`, `bld_cli.bat` | the `zimage.exe` launcher (also `--drop-cache` and `--purge`) |
 | `enrich.py`, `cues.json` | prompt enrichment |

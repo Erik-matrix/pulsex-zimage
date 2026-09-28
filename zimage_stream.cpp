@@ -11,6 +11,8 @@
 #include "ggml-backend.h"
 #include "gguf.h"
 
+#include <sys/stat.h>
+#include <cstddef>
 #include <atomic>
 #include <cmath>
 #include <condition_variable>
@@ -308,6 +310,9 @@ struct StreamTimes {
     int64_t g_gap   = 0;   // t_c1 -> t_d0, ska vara ~0
     int64_t g_post  = 0;   // compute klar -> run_block slut (ggml_free, kopior)
     int64_t g_free  = 0;   // ggml_backend_buffer_free + ggml_free, EFTER gamla avlasningen
+    int64_t r_wait  = 0;   // ringen: vantan pa platsens fence (forra blocket som last den)
+    int64_t r_fills = 0;   // ringen: antal platsfyllningar (strommade block)
+    int64_t r_hits  = 0;   // ringen: blocket lag redan kvar i sin plats
     int      calls  = 0;
 };
 // Per-lager-diagnostiken (`[stream] layers.N ...`) kostar en 63 MB-KOPIA av aktiveringen
@@ -326,6 +331,13 @@ static StreamTimes g_times;
 // Maskinen kor 16 GB med committed redan pa 14 GB - obegransad prefetch ar en minnesbomb.
 static const int ZI_RESIDENT = []{ const char * e = getenv("ZI_RESIDENT"); return e ? atoi(e) : 1; }();
 static const int ZI_PREFETCH = []{ const char * e = getenv("ZI_PREFETCH"); return e ? atoi(e) : 1; }();
+// ZI_WEIGHT_BUDGET_MB: tak for blockvikterna pa NPU:n (residenta block + ringens platser).
+// Osatt/negativ = obegransat (alla block residenta, som forut). Block blir residenta i den
+// ordning de kors sa lange de ryms under taket MINUS ringen; ovriga strommas varje steg genom
+// ZI_RING_SLOTS forallokerade viktplatser. Grunden for Flux/video: NPU-minnet ar pinnat och
+// raknas som committed, sa taket styr hela processens fotavtryck.
+static const long long ZI_WEIGHT_BUDGET_MB = []{ const char * e = getenv("ZI_WEIGHT_BUDGET_MB"); return e && *e ? atoll(e) : -1LL; }();
+static const int ZI_RING_SLOTS = []{ const char * e = getenv("ZI_RING_SLOTS"); int n = e ? atoi(e) : 2; return n < 1 ? 1 : (n > 4 ? 4 : n); }();
 
 // Namnen pa ett blocks vikttensorer. MASTE vara samma lista som `get(...)`-anropen i
 // run_block, annars laser traden fel byteintervall och blocket faller tillbaka till fread.
@@ -398,7 +410,70 @@ struct StreamCtx {
     // block. Se patch_io_buf_persistent.py.
     ggml_backend_buffer_t io_buf = nullptr;
     size_t  io_cap   = 0;
+    // Buffertringen (ZI_WEIGHT_BUDGET_MB). Varje plats: en WEIGHTS-buffert (repack i tensor_set),
+    // mappad till DSP:n vid forsta bruk och sedan aldrig om; ett fence-event som spelas in efter
+    // blockets graf; agaren (pfx) och dess tensorer, sa ett block som ligger kvar ateranvands.
+    ggml_backend_buffer_t ring_buf[4]   = {};
+    ggml_backend_event_t  ring_ev[4]    = {};
+    bool                  ring_rec[4]   = {};
+    ggml_context *        ring_ctx[4]   = {};
+    BlockWeights          ring_w[4]     = {};
+    std::string           ring_owner[4];
+    size_t                ring_cap      = 0;
+    int                   ring_next     = 0;
+    int                   n_resident    = 0;
+    std::map<std::string, bool> streamed;   // block som fatt nej av budgeten (beslutet ar stabilt)
+    // ZI_PACKCACHE: blockvikterna i tegelpackad form (se pack_cache_open). on = anvands.
+    struct {
+        bool   on = false;
+        FILE * f  = nullptr;
+        std::map<int64_t, std::pair<uint64_t, uint64_t>> ent;   // gguf-id -> (offset, bytes) i cachefilen
+        bool (*get_packed)(const ggml_tensor *, void *, size_t) = nullptr;
+        bool (*set_packed)(ggml_tensor *, const void *, size_t) = nullptr;
+    } pk;
 };
+
+// Var en vikts bytes ligger: i packcachen (fardigpackad) eller i GGUF:en (ra, packas i tensor_set).
+static bool weight_src(const StreamCtx & sc, int64_t id, size_t & off, size_t & sz) {
+    if (sc.pk.on) {
+        auto it = sc.pk.ent.find(id);
+        if (it != sc.pk.ent.end()) { off = (size_t) it->second.first; sz = (size_t) it->second.second; return true; }
+    }
+    off = sc.data_base + gguf_get_tensor_offset(sc.gctx, id);
+    sz  = gguf_get_tensor_size(sc.gctx, id);
+    return false;
+}
+static size_t g_mem_ring = 0;
+
+// Bytes ett blocks vikter tar i en hexagon-WEIGHTS-buffert (tegelpackade = utfyllda till 32).
+static size_t block_alloc_bytes(StreamCtx & sc, const std::string & pfx, bool mod) {
+    ggml_backend_buffer_type_t bt = ggml_backend_get_default_buffer_type(sc.backend);
+    const size_t al = ggml_backend_buft_get_alignment(bt);
+    ggml_init_params p = { ggml_tensor_overhead() * 32, nullptr, true };
+    ggml_context * c = ggml_init(p);
+    size_t n = 0;
+    for (const auto & nm : block_tensor_names(pfx, mod)) {
+        int64_t id = gguf_find_tensor(sc.gctx, nm.c_str());
+        if (id < 0) continue;
+        ggml_tensor * t = ggml_new_tensor(c, gguf_get_tensor_type(sc.gctx, id), GGML_MAX_DIMS, gguf_get_tensor_ne(sc.gctx, id));
+        n += GGML_PAD(ggml_backend_buft_get_alloc_size(bt, t), al);
+    }
+    ggml_free(c);
+    return n;
+}
+
+// Far blocket bli residentt? Beslutet tas forsta gangen blocket kors och star sedan fast.
+static bool ring_wants(StreamCtx & sc, const std::string & pfx, bool mod) {
+    if (ZI_WEIGHT_BUDGET_MB < 0) return false;
+    auto it = sc.streamed.find(pfx);
+    if (it != sc.streamed.end()) return it->second;
+    // Platsstorleken = storsta blocket (alla mod-block ar lika; context_refiner ar mindre).
+    const size_t slot   = block_alloc_bytes(sc, "layers.0", true);
+    const long long lim = ZI_WEIGHT_BUDGET_MB * 1048576LL - (long long) slot * ZI_RING_SLOTS;
+    const bool st = (long long) (g_mem_w + block_alloc_bytes(sc, pfx, mod)) > lim;
+    sc.streamed[pfx] = st;
+    return st;
+}
 
 // Arbetaren: sover pa cv_req, laser ett blocks byteintervall till `buf`, signalerar.
 // Den ror ALDRIG backenden eller ggml - bara sitt eget FILE* och sin egen map.
@@ -423,8 +498,8 @@ static void prefetch_worker(StreamCtx * sc) {
         for (const auto & nm : block_tensor_names(pfx, mod)) {
             int64_t id = gguf_find_tensor(sc->gctx, nm.c_str());
             if (id < 0) { local.clear(); break; }   // tyst fallback till fread i run_block
-            size_t off = sc->data_base + gguf_get_tensor_offset(sc->gctx, id);
-            size_t sz  = gguf_get_tensor_size(sc->gctx, id);
+            size_t off, sz;
+            weight_src(*sc, id, off, sz);
             std::vector<uint8_t> b(sz);
             _fseeki64(pf.f, (long long) off, SEEK_SET);
             if (fread(b.data(), 1, sz, pf.f) != sz) { local.clear(); break; }
@@ -446,12 +521,142 @@ static void prefetch_worker(StreamCtx * sc) {
 static void prefetch_request(StreamCtx & sc, const std::string & pfx, bool mod) {
     if (!ZI_PREFETCH || !sc.pf.f) return;
     if (ZI_RESIDENT && sc.wcache.count(pfx)) return;   // redan pa DSP:n, disken behovs ej
+    for (int k = 0; k < ZI_RING_SLOTS; k++) if (sc.ring_owner[k] == pfx) return;
     {
         std::lock_guard<std::mutex> lk(sc.pf.mu);
         if (sc.pf.have == pfx || sc.pf.want == pfx) return;
         sc.pf.want = pfx; sc.pf.want_mod = mod;
     }
     sc.pf.cv_req.notify_one();
+}
+
+
+// ---- packcachen (ZI_PACKCACHE) ---------------------------------------------------------------
+// Fil: 64 B huvud {magic "PXRP0001", tagg[32], gguf-storlek u64, gguf-mtime u64, n u32, 4 B},
+// sedan n indexposter a 152 B {namn[96], typ u32, 0 u32, ne[4] i64, offset u64, bytes u64}, sedan
+// data (4096-justerad per tensor). En post = en blocktensor exakt som den ligger i en hexagon-
+// WEIGHTS-buffert efter set_tensor (tegelpackad for Q4_0, ra for f32).
+struct PackHdr { char magic[8]; char tag[32]; uint64_t gsize, gmtime; uint32_t n, pad; };
+struct PackEnt { char name[96]; uint32_t type, pad; int64_t ne[4]; uint64_t off, size; };
+static_assert(sizeof(PackHdr) == 64 && sizeof(PackEnt) == 152, "packcache layout");
+
+static bool is_block_tensor(const char * nm) {
+    return !strncmp(nm, "layers.", 7) || !strncmp(nm, "noise_refiner.", 14) || !strncmp(nm, "context_refiner.", 16);
+}
+
+static void pack_cache_open(StreamCtx & sc, const std::string & gguf_path, const std::string & path) {
+    const int64_t t0 = ggml_time_us();
+    ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(ggml_backend_get_device(sc.backend));
+    auto tag_fn = (const char * (*)(void)) ggml_backend_reg_get_proc_address(reg, "ggml_backend_hexagon_pack_tag");
+    sc.pk.get_packed = (bool (*)(const ggml_tensor *, void *, size_t)) ggml_backend_reg_get_proc_address(reg, "ggml_backend_hexagon_get_tensor_packed");
+    sc.pk.set_packed = (bool (*)(ggml_tensor *, const void *, size_t)) ggml_backend_reg_get_proc_address(reg, "ggml_backend_hexagon_set_tensor_packed");
+    if (!tag_fn || !sc.pk.get_packed || !sc.pk.set_packed) {
+        fprintf(stderr, "[pack] backenden saknar packad-API - packcachen av\n");
+        return;
+    }
+    struct _stat64 st;
+    if (_stat64(gguf_path.c_str(), &st) != 0) return;
+    PackHdr want{};
+    memcpy(want.magic, "PXRP0001", 8);
+    strncpy(want.tag, tag_fn(), sizeof(want.tag) - 1);
+    want.gsize = (uint64_t) st.st_size;
+    want.gmtime = (uint64_t) st.st_mtime;
+
+    // alla blocktensorer, i GGUF-ordning, med sin packade storlek
+    ggml_backend_buffer_type_t bt = ggml_backend_get_default_buffer_type(sc.backend);
+    std::vector<int64_t> ids;
+    std::vector<PackEnt> ents;
+    {
+        ggml_init_params p = { ggml_tensor_overhead() * 2, nullptr, true };
+        const int64_t n = gguf_get_n_tensors(sc.gctx);
+        for (int64_t id = 0; id < n; id++) {
+            const char * nm = gguf_get_tensor_name(sc.gctx, id);
+            if (!is_block_tensor(nm)) continue;
+            if (strlen(nm) >= sizeof(PackEnt::name)) { fprintf(stderr, "[pack] for langt namn %s\n", nm); return; }
+            ggml_context * c = ggml_init(p);
+            ggml_tensor * t = ggml_new_tensor(c, gguf_get_tensor_type(sc.gctx, id), GGML_MAX_DIMS, gguf_get_tensor_ne(sc.gctx, id));
+            PackEnt e{};
+            strcpy(e.name, nm);
+            e.type = (uint32_t) t->type;
+            for (int k = 0; k < 4; k++) e.ne[k] = t->ne[k];
+            e.size = ggml_backend_buft_get_alloc_size(bt, t);
+            ggml_free(c);
+            ids.push_back(id);
+            ents.push_back(e);
+        }
+    }
+    const uint64_t data0 = GGML_PAD(sizeof(PackHdr) + ents.size() * sizeof(PackEnt), 4096);
+    {
+        uint64_t off = data0;
+        for (auto & e : ents) { e.off = off; off += GGML_PAD(e.size, 4096); }
+    }
+
+    // finns en giltig fil? (samma nyckel, samma poster)
+    bool ok = false;
+    if (FILE * f = fopen(path.c_str(), "rb")) {
+        PackHdr h{};
+        std::vector<PackEnt> got(ents.size());
+        ok = fread(&h, sizeof h, 1, f) == 1 && !memcmp(&h, &want, offsetof(PackHdr, n)) && h.n == ents.size() &&
+             fread(got.data(), sizeof(PackEnt), got.size(), f) == got.size() &&
+             !memcmp(got.data(), ents.data(), got.size() * sizeof(PackEnt));
+        fclose(f);
+        if (!ok) fprintf(stderr, "[pack] %s ar inaktuell (annan modell, fil eller packlayout) - bygger om\n", path.c_str());
+    }
+
+    if (!ok) {
+        // Bygg: varje tensor packas EN gang i en ateranvand WEIGHTS-buffert och sparas som den
+        // blev. Skrivs till .tmp och doptes forst nar allt ar pa disk - en avbruten byggnad
+        // lamnar aldrig en halv cache som ser giltig ut.
+        const std::string tmp = path + ".tmp";
+        FILE * f = fopen(tmp.c_str(), "wb");
+        if (!f) { fprintf(stderr, "[pack] kan inte skriva %s - packcachen av\n", tmp.c_str()); return; }
+        uint64_t maxsz = 0;
+        for (auto & e : ents) maxsz = e.size > maxsz ? e.size : maxsz;
+        ggml_backend_buffer_t b = ggml_backend_buft_alloc_buffer(bt, (size_t) maxsz);
+        if (!b) { fclose(f); remove(tmp.c_str()); fprintf(stderr, "[pack] ingen byggbuffert\n"); return; }
+        ggml_backend_buffer_set_usage(b, GGML_BACKEND_BUFFER_USAGE_WEIGHTS);
+        PackHdr h = want;
+        h.n = (uint32_t) ents.size();
+        fwrite(&h, sizeof h, 1, f);
+        fwrite(ents.data(), sizeof(PackEnt), ents.size(), f);
+        std::vector<uint8_t> raw, packed;
+        bool good = true;
+        uint64_t total = 0;
+        for (size_t i = 0; i < ents.size() && good; i++) {
+            ggml_init_params p = { ggml_tensor_overhead() * 2, nullptr, true };
+            ggml_context * c = ggml_init(p);
+            ggml_tensor * t = ggml_new_tensor(c, (ggml_type) ents[i].type, GGML_MAX_DIMS, ents[i].ne);
+            ggml_tallocr ta = ggml_tallocr_new(b);
+            good = ggml_tallocr_alloc(&ta, t) == GGML_STATUS_SUCCESS;
+            const size_t rsz = gguf_get_tensor_size(sc.gctx, ids[i]);
+            raw.resize(rsz);
+            _fseeki64(sc.gguf_file, (long long) (sc.data_base + gguf_get_tensor_offset(sc.gctx, ids[i])), SEEK_SET);
+            good = good && fread(raw.data(), 1, rsz, sc.gguf_file) == rsz;
+            if (good) ggml_backend_tensor_set(t, raw.data(), 0, rsz);   // tegelpackningen
+            packed.assign((size_t) GGML_PAD(ents[i].size, 4096), 0);
+            good = good && sc.pk.get_packed(t, packed.data(), (size_t) ents[i].size);
+            _fseeki64(f, (long long) ents[i].off, SEEK_SET);
+            good = good && fwrite(packed.data(), 1, packed.size(), f) == packed.size();
+            total += ents[i].size;
+            ggml_free(c);
+        }
+        ggml_backend_buffer_free(b);
+        good = fclose(f) == 0 && good;
+        if (good) remove(path.c_str());
+        if (!good || rename(tmp.c_str(), path.c_str()) != 0) {
+            remove(tmp.c_str());
+            fprintf(stderr, "[pack] bygget misslyckades - packcachen av\n");
+            return;
+        }
+        fprintf(stderr, "[pack] byggd: %zu tensorer, %.0f MB, %.1f s -> %s\n", ents.size(), total / 1048576.0,
+                (ggml_time_us() - t0) * 1e-6, path.c_str());
+    }
+
+    sc.pk.f = fopen(path.c_str(), "rb");
+    if (!sc.pk.f) return;
+    for (size_t i = 0; i < ents.size(); i++) sc.pk.ent[ids[i]] = { ents[i].off, ents[i].size };
+    sc.pk.on = true;
+    fprintf(stderr, "[pack] packcache pa: %zu tensorer (%.2f s)\n", ents.size(), (ggml_time_us() - t0) * 1e-6);
 }
 
 // runs one block: loads its weights from disk, computes, returns the new x (host-side).
@@ -491,10 +696,35 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
         if (it != sc.wcache.end()) { w = it->second.w; cached = &it->second; }
     }
 
+    // Buffertringen: blocket fick nej av budgeten -> en av ZI_RING_SLOTS platser. Ligger det
+    // redan kvar i en plats (fa strommade block) ateranvands den utan uppladdning.
+    int  ring_slot = -1;
+    bool ring_hit  = false;
+    if (!cached && ZI_RESIDENT && ring_wants(sc, pfx, mod)) {
+        for (int k = 0; k < ZI_RING_SLOTS; k++) {
+            if (sc.ring_owner[k] == pfx) { ring_slot = k; ring_hit = true; break; }
+        }
+        if (ring_hit) {
+            w = sc.ring_w[ring_slot];
+            g_times.r_hits++;
+        } else {
+            ring_slot = sc.ring_next;
+            sc.ring_next = (sc.ring_next + 1) % ZI_RING_SLOTS;
+            // Platsen far inte skrivas forran blocket som senast last den ar klart pa DSP:n.
+            const int64_t t_rw = ggml_time_us();
+            if (sc.ring_rec[ring_slot]) ggml_backend_event_synchronize(sc.ring_ev[ring_slot]);
+            g_times.r_wait += ggml_time_us() - t_rw;
+            if (sc.ring_ctx[ring_slot]) { ggml_free(sc.ring_ctx[ring_slot]); sc.ring_ctx[ring_slot] = nullptr; }
+            sc.ring_owner[ring_slot].clear();
+            g_times.r_fills++;
+        }
+    }
+    const bool ring = ring_slot >= 0;
+
     // Weights go in their own context when resident, so the per-call context can be freed
     // without dropping them. Non-resident they share the per-call context as before.
     ggml_context * ctx_w = nullptr;
-    if (!cached) {
+    if (!cached && !ring_hit) {
         if (ZI_RESIDENT) {
             ggml_init_params wparams = { ggml_tensor_overhead() * 32, nullptr, true };
             ctx_w = ggml_init(wparams);
@@ -517,7 +747,7 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
         return t;
     };
 
-    if (!cached) {
+    if (!cached && !ring_hit) {
     w.an1 = get(pfx + ".attention_norm1.weight");
     w.an2 = get(pfx + ".attention_norm2.weight");
     w.fn1 = get(pfx + ".ffn_norm1.weight");
@@ -552,7 +782,25 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
     // Resident weights get their own buffer, allocated once. WEIGHTS usage triggers the
     // ggml-hexagon tiled repack in set-tensor, so this way we repack once, not per step.
     ggml_backend_buffer_t buf_w = nullptr;
-    if (!cached && ZI_RESIDENT) {
+    if (ring && !ring_hit) {
+        // Platsen allokeras EN gang (storsta blocket) och mappas vid forsta bruk; sedan placeras
+        // blockets tensorer linjart i den. Ingen ny DSP-mappning per block.
+        const size_t need = block_alloc_bytes(sc, "layers.0", true);
+        if (!sc.ring_buf[ring_slot] || sc.ring_cap < need) {
+            if (sc.ring_buf[ring_slot]) { g_mem_ring -= ggml_backend_buffer_get_size(sc.ring_buf[ring_slot]); ggml_backend_buffer_free(sc.ring_buf[ring_slot]); }
+            sc.ring_buf[ring_slot] = ggml_backend_buft_alloc_buffer(ggml_backend_get_default_buffer_type(sc.backend), need);
+            if (!sc.ring_buf[ring_slot]) { fprintf(stderr, "failed to allocate ring slot %d (%zu B)\n", ring_slot, need); exit(1); }
+            ggml_backend_buffer_set_usage(sc.ring_buf[ring_slot], GGML_BACKEND_BUFFER_USAGE_WEIGHTS);
+            g_mem_ring += ggml_backend_buffer_get_size(sc.ring_buf[ring_slot]);
+            sc.ring_cap = need;
+            if (!sc.ring_ev[ring_slot]) sc.ring_ev[ring_slot] = ggml_backend_event_new(ggml_backend_get_device(sc.backend));
+            if (!sc.ring_ev[ring_slot]) { fprintf(stderr, "ring: backenden saknar event\n"); exit(1); }
+        }
+        ggml_tallocr ta = ggml_tallocr_new(sc.ring_buf[ring_slot]);
+        for (ggml_tensor * t : to_upload) {
+            if (ggml_tallocr_alloc(&ta, t) != GGML_STATUS_SUCCESS) { fprintf(stderr, "ring: %s ryms inte i platsen\n", t->name); exit(1); }
+        }
+    } else if (!cached && ZI_RESIDENT) {
         buf_w = ggml_backend_alloc_ctx_tensors(ctx_w, sc.backend);
         if (!buf_w) { fprintf(stderr, "failed to allocate weight buffer for %s\n", pfx.c_str()); exit(1); }
         ggml_backend_buffer_set_usage(buf_w, GGML_BACKEND_BUFFER_USAGE_WEIGHTS);
@@ -636,8 +884,9 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
 
         std::vector<uint8_t> stage;
         for (size_t i = 0; i < to_upload.size(); i++) {
-            size_t off = sc.data_base + gguf_get_tensor_offset(sc.gctx, to_upload_id[i]);
-            size_t sz = gguf_get_tensor_size(sc.gctx, to_upload_id[i]);
+            size_t off, sz;
+            const bool packed = weight_src(sc, to_upload_id[i], off, sz);
+            FILE * src_f = packed ? sc.pk.f : sc.gguf_file;
             const int64_t t_r0 = ggml_time_us();
             if (pfbuf) {
                 auto it = pfbuf->find(to_upload_id[i]);
@@ -649,20 +898,32 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
             }
             if (!pfbuf) {
                 stage.resize(sz);
-                _fseeki64(sc.gguf_file, (long long) off, SEEK_SET);
-                size_t got = fread(stage.data(), 1, sz, sc.gguf_file);
+                _fseeki64(src_f, (long long) off, SEEK_SET);
+                size_t got = fread(stage.data(), 1, sz, src_f);
                 if (got != sz) { fprintf(stderr, "short read for %s\n", to_upload[i]->name); exit(1); }
             }
             const int64_t t_r1 = ggml_time_us();
             // tensor_set pa en WEIGHTS-buffert triggar ggml-hexagons tegelpackning pa VARDEN.
             // Dela hinken sa vi vet om `vikter` ar disk eller repack innan vi bygger prefetch.
-            ggml_backend_tensor_set(to_upload[i], stage.data(), 0, sz);
+            if (packed) {
+                // fardigpackad: bara en kopia in i NPU-bufferten (+ samma flaggor som set_tensor satter)
+                if (!sc.pk.set_packed(to_upload[i], stage.data(), sz)) {
+                    fprintf(stderr, "packcache: %s passar inte bufferten (%zu B)\n", to_upload[i]->name, sz); exit(1);
+                }
+            } else {
+                ggml_backend_tensor_set(to_upload[i], stage.data(), 0, sz);
+            }
             g_times.w_read += t_r1 - t_r0;
             g_times.w_set  += ggml_time_us() - t_r1;
             g_times.w_bytes += sz;
         }
     }
-    if (!cached && ZI_RESIDENT) {
+    if (ring && !ring_hit) {
+        sc.ring_ctx[ring_slot]   = ctx_w;
+        sc.ring_w[ring_slot]     = w;
+        sc.ring_owner[ring_slot] = pfx;
+    } else if (!cached && ZI_RESIDENT) {
+        sc.n_resident++;
         BlockCache bc;
         bc.ctx = ctx_w;
         bc.buf = buf_w;
@@ -744,6 +1005,8 @@ static std::vector<float> & run_block(StreamCtx & sc, const std::string & pfx, b
 
     int64_t t_c0 = ggml_time_us();
     ggml_status st = ggml_backend_graph_compute(sc.backend, gf);
+    // Fence efter blockets ops: nasta fyllning av samma plats vantar bara pa DETTA block.
+    if (ring) { ggml_backend_event_record(sc.ring_ev[ring_slot], sc.backend); sc.ring_rec[ring_slot] = true; }
     int64_t t_c1 = ggml_time_us();
     if (st != GGML_STATUS_SUCCESS) { fprintf(stderr, "compute failed for %s: %d\n", pfx.c_str(), st); exit(1); }
     // ⛔ DENNA RAD VAR "efter compute 4,1 s". 130 OBUFFRADE stderr-skrivningar per bild
@@ -881,10 +1144,15 @@ int main(int argc, char ** argv) {
     sc.gguf_file = fopen(gguf_path.c_str(), "rb");
     sc.data_base = gguf_get_data_offset(sc.gctx);
 
+    if (const char * pc = getenv("ZI_PACKCACHE")) {
+        if (*pc) pack_cache_open(sc, gguf_path, pc);
+    }
+    g_ph.lap("start: packcache");
+
     // Prefetch-traden far ETT EGET FILE*: delad filposition mellan tva tradar ar en
     // tystnande datatavling (_fseeki64 + fread ar inte atomiska tillsammans).
     if (ZI_PREFETCH) {
-        sc.pf.f = fopen(gguf_path.c_str(), "rb");
+        sc.pf.f = fopen(sc.pk.on ? getenv("ZI_PACKCACHE") : gguf_path.c_str(), "rb");
         if (sc.pf.f) sc.pf.th = std::thread(prefetch_worker, &sc);
     }
     g_ph.lap("start: gguf-index + prefetch-trad");
@@ -1057,9 +1325,10 @@ int main(int argc, char ** argv) {
     static const int ZI_STEPS = []{ const char * e = getenv("ZI_STEPS"); return e ? atoi(e) : 4; }();
     const int n_steps = ZI_STEPS > 0 ? ZI_STEPS : 1;
     const int LH = Ht * PATCH;
+    const int LW = Wt * PATCH;                 // 09-28: icke-kvadratiskt (t.ex. 848x480)
 
     std::vector<float> sig;                    // sigma-schema, N+1 varden
-    std::vector<float> xlat;                   // rå latent [INCH,LH,LH] mellan stegen
+    std::vector<float> xlat;                   // rå latent [INCH,LH,LW] mellan stegen
     if (ZI_STEPS > 0) {
         // ZI_SIGMA=1 (FORVAL sedan 2026-09-27): gamla motorns schema, t = 1 - i/N.
         //   Ger [1 .9 .75 .5 0]: sista steget gor RIKTIGT arbete.
@@ -1104,14 +1373,14 @@ int main(int argc, char ** argv) {
             printf("\n");
         }
         xlat = read_bin<float>(dir + "\\lat_init.f32");
-        if (xlat.size() != (size_t) INCH * LH * LH) {
-            fprintf(stderr, "lat_init.f32 saknas/fel storlek (%zu, vantade %d)\n", xlat.size(), INCH * LH * LH);
+        if (xlat.size() != (size_t) INCH * LH * LW) {
+            fprintf(stderr, "lat_init.f32 saknas/fel storlek (%zu, vantade %d)\n", xlat.size(), INCH * LH * LW);
             return 1;
         }
-        printf("[resident] %d steg, latent %dx%d, sigma[0]=%.3f sigma[N-1]=%.4f\n", n_steps, LH, LH, sig[0], sig[n_steps - 1]);
+        printf("[resident] %d steg, latent %dx%d, sigma[0]=%.3f sigma[N-1]=%.4f\n", n_steps, LH, LW, sig[0], sig[n_steps - 1]);
     }
 
-    // patchify: [INCH,LH,LH] -> [Nimg, PATCH*PATCH*INCH], inom-token (ph,pw,c)
+    // patchify: [INCH,LH,LW] -> [Nimg, PATCH*PATCH*INCH], inom-token (ph,pw,c)
     // (samma ordning som referensens permute(1,3,5,2,4,6,0) => (pF,pH,pW,C))
     auto patchify = [&](const std::vector<float> & lat) {
         std::vector<float> out((size_t) Nimg * PATCH_IN);
@@ -1121,7 +1390,7 @@ int main(int argc, char ** argv) {
                     for (int pwi = 0; pwi < PATCH; pwi++)
                         for (int c = 0; c < INCH; c++)
                             out[(size_t)(hi * Wt + wi) * PATCH_IN + (phi * PATCH + pwi) * INCH + c] =
-                                lat[(size_t) c * LH * LH + (hi * PATCH + phi) * LH + (wi * PATCH + pwi)];
+                                lat[(size_t) c * LH * LW + (hi * PATCH + phi) * LW + (wi * PATCH + pwi)];
         return out;
     };
 
@@ -1323,8 +1592,13 @@ int main(int argc, char ** argv) {
     }
 
     g_ph.lap("skriv lat_out");
+    if (ZI_WEIGHT_BUDGET_MB >= 0) {
+        fprintf(stderr, "[budget] ring: tak %lld MB | %d block residenta (%.0f MB) | %d platser (%.0f MB) | %lld fyllningar, %lld traffar | fence-vanta %.2f s\n",
+                ZI_WEIGHT_BUDGET_MB, sc.n_resident, g_mem_w / 1048576.0, ZI_RING_SLOTS, g_mem_ring / 1048576.0,
+                (long long) g_times.r_fills, (long long) g_times.r_hits, g_times.r_wait * 1e-6);
+    }
     fprintf(stderr, "[budget] minne: vikter %.0f MB | graf (gallocr) %.0f MB | aktivering %.0f MB | io %.0f MB\n",
-            g_mem_w / 1048576.0, sc.galloc ? ggml_gallocr_get_buffer_size(sc.galloc, 0) / 1048576.0 : 0.0,
+            (g_mem_w + g_mem_ring) / 1048576.0, sc.galloc ? ggml_gallocr_get_buffer_size(sc.galloc, 0) / 1048576.0 : 0.0,
             g_mem_act / 1048576.0, g_mem_io / 1048576.0);
     {
         const double k = 1e-6;
@@ -1353,6 +1627,12 @@ int main(int argc, char ** argv) {
         if (kv.second.buf) ggml_backend_buffer_free(kv.second.buf);
         if (kv.second.ctx) ggml_free(kv.second.ctx);
     }
+    ggml_backend_synchronize(sc.backend);
+    for (int k = 0; k < 4; k++) {
+        if (sc.ring_ev[k]) ggml_backend_event_free(sc.ring_ev[k]);
+        if (sc.ring_buf[k]) ggml_backend_buffer_free(sc.ring_buf[k]);
+        if (sc.ring_ctx[k]) ggml_free(sc.ring_ctx[k]);
+    }
     if (sc.galloc) ggml_gallocr_free(sc.galloc);
     if (sc.act_buf) ggml_backend_buffer_free(sc.act_buf);
     if (sc.io_buf) ggml_backend_buffer_free(sc.io_buf);
@@ -1368,6 +1648,7 @@ int main(int argc, char ** argv) {
     if (sc.pf.f) { fclose(sc.pf.f); sc.pf.f = nullptr; }
     g_ph.lap("slut: prefetch-join");
 
+    if (sc.pk.f) fclose(sc.pk.f);
     fclose(sc.gguf_file);
     gguf_free(sc.gctx);
     ggml_backend_free(sc.backend);

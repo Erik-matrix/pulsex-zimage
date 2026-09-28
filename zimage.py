@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 _DEFAULTS = {"out": "zimage.jpg", "size": 512, "steps": 4, "shift": 1.0, "seed": 1234, "quality": 95,
              "vae": "taef1", "encoder": "npu", "upscale": True, "upscale_to": 1024, "enrich": False,
              "unload_after_s": 60, "purge_on_start": "standby", "purge_on_exit": "standby",
-             "upscale_detail": 0.5}
+             "upscale_detail": 0.5, "pack_cache": True, "npu_weight_budget_mb": 0}
 _PATH_KEYS = ("models", "dit", "encoder", "tokenizer", "vae_full", "taef1", "bin", "esrgan_x4", "qnn_runtime")
 
 
@@ -243,10 +243,51 @@ def cap_feats(prompt, workdir, verbose):
     return a
 
 
+# --- image size: 512 / 1024 (square, an int) or W x H, e.g. 848x480 (a tuple) -------------------
+# Both sides must divide by 16 (VAE x8, patch x2): 854x480 is not possible, 848x480 is.
+SIZE_ALIASES = {"480p": (848, 480), "720p": (1280, 720)}
+
+
+def parse_size(v):
+    """'512' / '1024' -> int, '848x480' / '480p' / '720p' -> (w, h). ValueError otherwise."""
+    t = str(v).strip().lower()
+    if t in SIZE_ALIASES:
+        return SIZE_ALIASES[t]
+    if "x" in t:
+        w, h = (int(p) for p in t.split("x", 1))
+    else:
+        w = h = int(t)
+    if w % 16 or h % 16 or not (256 <= w <= 2048 and 256 <= h <= 2048):
+        raise ValueError("size must be 256..2048 per side and divisible by 16 (e.g. 848x480), got %s" % v)
+    return w if w == h else (w, h)
+
+
+def size_wh(px):
+    return (px, px) if isinstance(px, int) else tuple(px)
+
+
+def size_str(px):
+    w, h = size_wh(px)
+    return str(w) if w == h else "%dx%d" % (w, h)
+
+
+_LAT_HW = None   # (lh, lw) of the latent build_inputs made; the VAEs read the shape from here
+
+
+def lat_hw(lat):
+    if _LAT_HW and _LAT_HW[0] * _LAT_HW[1] * INCH == lat.size:
+        return _LAT_HW
+    h = int(round((lat.size // INCH) ** 0.5))
+    return h, h
+
+
 def build_inputs(cap, px, seed, workdir):
     """Skriver allt harnessen laser. cap_ids ar 1..Scap; img_ids0 ar Scap+1."""
-    lh = px // VAEF
-    ht = wt = lh // PATCH
+    global _LAT_HW
+    w, h = size_wh(px)
+    lh, lw = h // VAEF, w // VAEF
+    ht, wt = lh // PATCH, lw // PATCH
+    _LAT_HW = (lh, lw)
     nimg, scap = ht * wt, cap.shape[0]
 
     cap.astype(np.float32).tofile(workdir / "cap_raw.bin")
@@ -264,13 +305,28 @@ def build_inputs(cap, px, seed, workdir):
 
     (workdir / "meta.txt").write_text(f"{ht} {wt} {nimg} {scap} {nimg+scap}\n")
     rng = np.random.default_rng(seed)
-    rng.standard_normal((INCH, lh, lh)).astype(np.float32).tofile(workdir / "lat_init.f32")
+    rng.standard_normal((INCH, lh, lw)).astype(np.float32).tofile(workdir / "lat_init.f32")
     np.zeros(nimg * INCH * PATCH * PATCH, np.float32).tofile(workdir / "img_raw.bin")  # rakans om
     np.array([1.0], np.float32).tofile(workdir / "t.bin")
     return nimg + scap
 
 
 LAT_READY = "[resident] klar -> lat_out.f32"
+
+
+def dit_weight_env():
+    """ZI_PACKCACHE / ZI_WEIGHT_BUDGET_MB for zimage-dit-stream.exe (see zimage.json)."""
+    env = {}
+    if DEFAULTS.get("pack_cache", True):
+        pack = DIT.with_suffix(".hexpack")
+        env["ZI_PACKCACHE"] = str(pack)
+        if not pack.exists():
+            print("  " + C_DIM + "(once: preparing the NPU weight cache next to the model, ~5 s, 3.5 GB)" + C_OFF,
+                  flush=True)
+    b = int(DEFAULTS.get("npu_weight_budget_mb", 0))
+    if b >= 0:
+        env["ZI_WEIGHT_BUDGET_MB"] = str(b)
+    return env
 
 
 def start_dit(workdir, steps, verbose):
@@ -285,7 +341,8 @@ def start_dit(workdir, steps, verbose):
     env = {**os.environ, "ADSP_LIBRARY_PATH": str(BIN),
            "ZI_FLASH": "1", "ZI_DUMP": "0",
            # PD-dump om DSP-processen dor (0x72); kostar inget annars (ggml-hexagon patch_0x72_diagnose.py)
-           "GGML_HEXAGON_PD_DUMP": os.environ.get("GGML_HEXAGON_PD_DUMP", "1"), "ZI_STEPS": str(steps)}
+           "GGML_HEXAGON_PD_DUMP": os.environ.get("GGML_HEXAGON_PD_DUMP", "1"), "ZI_STEPS": str(steps),
+           **dit_weight_env()}
     p = subprocess.Popen([str(BIN / "zimage-dit-stream.exe"), str(DIT), str(workdir), "HTP0"],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
     out, err, ready = [], [], threading.Event()
@@ -356,18 +413,17 @@ def taef1_decode(lat, tmp):
     KONTRAKT: taef1 har EGEN intern latentskalning och tar darfor den RAA
     diffusionslatenten - INTE lat/SCALE + SHIFT som Flux-AE:n vill ha.
     """
-    H = int(round((lat.size // INCH) ** 0.5))
+    H, W = lat_hw(lat)
     fi = Path(tmp) / "taef1_lat.f32"
     fo = Path(tmp) / "taef1_out.rgb"
-    lat.reshape(INCH, H, H).astype(np.float32).tofile(str(fi))
+    lat.reshape(INCH, H, W).astype(np.float32).tofile(str(fi))
     # vikterna ligger i {models}/taef1/ (09-28: forut hardkodat i exe:n - fungerade bara har)
     env = dict(os.environ)
     env.setdefault("PULSE_TAEF1_WEIGHTS", str(MODELS / "taef1" / "diffusion_pytorch_model.safetensors"))
-    r = subprocess.run([str(TAEF1X), str(fi), str(fo)], capture_output=True, text=True, env=env)
+    r = subprocess.run([str(TAEF1X), str(fi), str(fo), "--hw", "%dx%d" % (H, W)], capture_output=True, text=True, env=env)
     if r.returncode != 0 or not fo.exists():
         raise RuntimeError("taef1_decode: rc=%d %s" % (r.returncode, r.stderr[-400:]))
-    px = H * VAEF
-    return np.fromfile(str(fo), dtype=np.uint8).reshape(px, px, 3)
+    return np.fromfile(str(fo), dtype=np.uint8).reshape(H * VAEF, W * VAEF, 3)
 
 
 def decode(lat, tmp):
@@ -430,8 +486,8 @@ def vae_decode(lat):
         a = torch.softmax((q @ k) * (C ** -0.5), -1)
         return x + conv((a @ v).permute(0, 2, 1).reshape(B, C, H, Wd), p+".proj_out", 1)
 
-    H = int(round((lat.size // INCH) ** 0.5))
-    z = (torch.from_numpy(lat.reshape(1, INCH, H, H)) / SCALE + SHIFT).to(memory_format=torch.channels_last)
+    H, W = lat_hw(lat)
+    z = (torch.from_numpy(lat.reshape(1, INCH, H, W)) / SCALE + SHIFT).to(memory_format=torch.channels_last)
     with torch.no_grad():
         h = conv(z, "decoder.conv_in", 3)
         h = resnet(h, "decoder.mid.block_1"); h = attn(h, "decoder.mid.attn_1")
@@ -460,7 +516,8 @@ class DitServer:
         env = {**os.environ, "ADSP_LIBRARY_PATH": str(BIN),
                "ZI_FLASH": "1", "ZI_DUMP": "0",
            # PD-dump om DSP-processen dor (0x72); kostar inget annars (ggml-hexagon patch_0x72_diagnose.py)
-           "GGML_HEXAGON_PD_DUMP": os.environ.get("GGML_HEXAGON_PD_DUMP", "1"), "ZI_STEPS": str(steps), "ZI_SERVE": "1"}
+           "GGML_HEXAGON_PD_DUMP": os.environ.get("GGML_HEXAGON_PD_DUMP", "1"), "ZI_STEPS": str(steps), "ZI_SERVE": "1",
+           **dit_weight_env()}
         self.p = subprocess.Popen(
             [str(BIN / "zimage-dit-stream.exe"), str(DIT), str(first_dir), "HTP0"],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
@@ -517,7 +574,7 @@ def one_image(prompt, px, seed, steps, out, quality, verbose, tmp, dit=None):
     else:
         dit.render(tmp)
         lat = np.fromfile(tmp / "lat_out.f32", dtype=np.float32)
-    log(f"DiT {px}px, {steps} steps, {su} tokens", t)
+    log(f"DiT {size_str(px)}px, {steps} steps, {su} tokens", t)
     if not np.isfinite(lat).all():
         raise RuntimeError("the latent contains NaN")
     t = time.perf_counter(); im = decode(lat, tmp); log("VAE", t)
@@ -740,7 +797,7 @@ def next_free(template):
 
 
 def describe(px, steps, seed, up, up_to):
-    size = "%d x %d" % (px, px)
+    size = "%d x %d" % size_wh(px)
     return ("  " + C_CYAN + "PulseX" + C_OFF + "  " + size + "  |  " + str(steps) + " steps  |  seed " + str(seed)
             + (("  |  upscale x4 -> " + str(up_to)) if up else ""))
 
@@ -902,8 +959,8 @@ def serve(a, tmp):
     print("  add options at the end of the line    " + D + "a lighthouse at dusk --size 1024" + O)
     print()
     print("  " + D + "these stay in effect until you change them:" + O)
-    print("    " + Y + "--size 512|1024" + O + "   resolution, or just " + Y + "--512" + O + " / " + Y + "--1024"
-          + O + " (now " + str(a.size) + ")")
+    print("    " + Y + "--size 512|1024|480p" + O + "  resolution, or just " + Y + "--512" + O + " / " + Y + "--1024"
+          + O + " / " + Y + "--480p" + O + " (848 x 480, wide) (now " + size_str(a.size) + ")")
     print("    " + Y + "--up" + O + " / " + Y + "--noup" + O + "     512 + Real-ESRGAN x4 -> " + str(a.upscale_to)
           + " on/off (now " + ("on" if a.upscale else "off") + ")")
     print("    " + Y + "--seed N" + O + "          start seed (each image adds 1)")
@@ -920,7 +977,8 @@ def serve(a, tmp):
     print()
     if a.vae == "full":
         vae_weights()                  # betala torch-laddningen nu, inte pa forsta prompten
-    dit, n, px, up, seed0 = None, 0, a.size, a.upscale, a.seed
+    # n raknas upp FORE bilden: bild n far seed0 + n. -1 sa forsta bilden far exakt a.seed (09-28: fick +1)
+    dit, n, px, up, seed0 = None, 0, a.size, a.upscale, a.seed - 1
     enr = a.enrich
     unload_s = int(DEFAULTS.get("unload_after_s", 60) or 0)
     if unload_s > 0:
@@ -958,17 +1016,19 @@ def serve(a, tmp):
             k = 0
             while k < len(words):
                 w = words[k]
-                if w in ("--512", "--1024"):                   # kortform (09-28: "--1024" foll igenom)
-                    px = int(w[2:]); k += 1; continue
-                if w == "--size" and k + 1 < len(words) and words[k + 1] in ("512", "1024"):
-                    px = int(words[k + 1]); k += 2; continue
+                if w in ("--512", "--1024", "--480p", "--720p"):   # kortform (09-28: "--1024" foll igenom)
+                    px = parse_size(w[2:]); k += 1; continue
                 if w == "--size":
                     # Tyst svald ValueError har lat "--size N" se ut att fungera medan
                     # upplosningen stod kvar - anvandaren fick fel bild utan att veta om det.
-                    print("  " + Y + "--size" + O + " takes 512 or 1024 - keeping " + str(px) + ".")
+                    try:
+                        px = parse_size(words[k + 1] if k + 1 < len(words) else "")
+                    except ValueError:
+                        print("  " + Y + "--size" + O + " takes 512, 1024, 480p or WxH divisible by 16 (848x480)"
+                              " - keeping " + size_str(px) + ".")
                     k += 2; continue
                 if w == "--seed" and k + 1 < len(words) and words[k + 1].lstrip("-").isdigit():
-                    seed0 = int(words[k + 1]) - n; k += 2; continue
+                    seed0 = int(words[k + 1]) - n - 1; k += 2; continue   # nasta bild (n+1) far exakt N
                 if w in ("--up", "--upscale"):
                     up = True; k += 1; continue
                 if w in ("--noup", "--no-upscale"):
@@ -989,7 +1049,7 @@ def serve(a, tmp):
                     print("  " + D + "unknown option " + w + " - ignored" + O); k += 1; continue
                 prompt.append(w); k += 1
             if not prompt:
-                print("  " + D + "(settings updated: size " + str(px) + ", upscale " + ("on" if up else "off")
+                print("  " + D + "(settings updated: size " + size_str(px) + ", upscale " + ("on" if up else "off")
                       + " - now type a prompt)" + O)
                 continue
             text = " ".join(prompt)
@@ -1051,8 +1111,8 @@ def main():
     ap = argparse.ArgumentParser(prog="PulseX", description="Make an image from a prompt on the NPU.")
     ap.add_argument("prompt", nargs="?", default="", help="the prompt (empty with --serve)")
     ap.add_argument("-o", "--out", default=None, help="output file (.jpg or .png)")
-    ap.add_argument("--size", type=int, default=int(DEFAULTS["size"]), choices=(512, 1024),
-                    help="512 is ~3.5x cheaper than 1024 and good for trying prompts")
+    ap.add_argument("--size", type=parse_size, default=parse_size(DEFAULTS["size"]),
+                    help="512, 1024, 480p (= 848x480) or WxH divisible by 16; 512 is ~3.5x cheaper than 1024")
     ap.add_argument("--steps", type=int, default=int(DEFAULTS["steps"]), help="Z-Image-Turbo is distilled for 4")
     ap.add_argument("--seed", type=int, default=int(DEFAULTS["seed"]))
     ap.add_argument("-q", "--quality", type=int, default=int(DEFAULTS["quality"]), help="JPEG quality")

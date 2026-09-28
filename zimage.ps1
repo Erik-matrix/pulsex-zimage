@@ -16,7 +16,7 @@ param(
 
     # 0 / '' = "not given": the value then comes from zimage.json.
     [Alias('o')] [string] $Out = '',
-    [ValidateSet(0, 512, 1024)] [int] $Size = 0,
+    [ValidatePattern('^(|0|512|1024|480p|720p|[0-9]+x[0-9]+)$')] [string] $Size = '',
     [ValidateRange(0, 50)]   [int] $Steps = 0,
     [int] $Seed = -1,
     [ValidateRange(0, 100)]  [int] $Quality = 0,
@@ -68,7 +68,7 @@ $QnnRt   = Resolve-CfgPath $Cfg.paths.qnn_runtime $Models
 $Port    = [int] $Cfg.server.port
 $D       = $Cfg.defaults
 if (-not $Out)       { $Out       = [string] $D.out }
-if (-not $Size)      { $Size      = [int] $D.size }
+if (-not $Size -or $Size -eq '0') { $Size = [string] $D.size }
 if (-not $Steps)     { $Steps     = [int] $D.steps }
 if ($Seed -lt 0)     { $Seed      = [int] $D.seed }
 if (-not $Quality)   { $Quality   = [int] $D.quality }
@@ -127,7 +127,7 @@ function Show-Usage {
     W '  what you get' DarkGray
     Show-Rows @(
         @('-Out <file>',        'exact file name (.jpg/.png); without it: next free', "zimage_NNNN.jpg"),
-        @('-Size 512|1024',     'resolution of the generated image',                 "now $Size"),
+        @('-Size 512|1024|480p', 'resolution; 480p = 848 x 480 (wide, no upscaler)', "now $Size"),
         @('-NoUp',              'keep the plain 512 image (no x4 upscaler)',         $(if ($Upscale) { 'upscaler now on' } else { 'upscaler now off' })),
         @('-Seed <n>',          'another number = another image for the same text',  "now $Seed"),
         @('-Enrich',            'add material words (skin pores, wet sand ...)',     $(if ($D.enrich) { 'now on' } else { 'now off' })),
@@ -284,7 +284,7 @@ function Hold-Window { if ($Pause) { W ''; W 'Press Enter to close...' DarkGray;
 # least as good. NOTE: it saves TIME, not memory - the 1024 stage still loads the whole
 # model and allocates the same 4116-token activations.
 function Invoke-Cascade([string] $prompt) {
-    if ($Size -ne 1024) {
+    if ($Size -ne '1024') {
         W 'Note: -Cascade only helps at -Size 1024; rendering natively.' DarkGray
         return $false
     }
