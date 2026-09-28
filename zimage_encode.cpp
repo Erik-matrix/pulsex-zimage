@@ -19,6 +19,7 @@
 //   zimage-encode <model.gguf> [device=HTP0] [layer=35]
 
 #include "llama.h"
+#include "zimage_encode_stream.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -51,6 +52,17 @@ int main(int argc, char ** argv) {
     llama_log_set(quiet_log, nullptr);
     ggml_backend_load_all();
     llama_backend_init();
+
+    // 09-28: forval = lagren strommas genom tva NPU-platser (zimage_encode_stream.h), ~0,2 GB i
+    // stallet for 2,3 GB. ZI_ENC_STREAM=0 = llama.cpp-vagen nedan (hela modellen pa NPU:n).
+    {
+        const char * es = getenv("ZI_ENC_STREAM");
+        if (device != "none" && device != "cpu" && !(es && atoi(es) == 0)) {
+            const int rc = zienc::run_stream(model_path, device, layer);
+            llama_backend_free();
+            return rc;
+        }
+    }
 
     llama_model_params mp = llama_model_default_params();
     mp.load_mode          = LLAMA_LOAD_MODE_MMAP;   // read straight from the file cache (== --load-mode mmap)
