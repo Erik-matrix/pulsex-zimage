@@ -18,7 +18,7 @@ import numpy as np
 # mot json-filens katalog, {models} = paths.models. Forvalen nedan galler for nycklar filen saknar.
 HERE = Path(__file__).resolve().parent
 _DEFAULTS = {"out": "zimage.jpg", "size": 512, "steps": 4, "shift": 1.0, "seed": 1234, "quality": 95,
-             "vae": "taef1", "encoder": "cpu", "upscale": True, "upscale_to": 1024, "enrich": False,
+             "vae": "taef1", "encoder": "npu", "upscale": True, "upscale_to": 1024, "enrich": False,
              "unload_after_s": 60, "purge_on_start": "standby", "purge_on_exit": "standby",
              "upscale_detail": 0.5}
 _PATH_KEYS = ("models", "dit", "encoder", "tokenizer", "vae_full", "taef1", "bin", "esrgan_x4", "qnn_runtime")
@@ -69,6 +69,72 @@ INCH, PATCH, VAEF, CAPD = 16, 2, 8, 2560
 SCALE, SHIFT, GN_G, EPS = 0.3611, 0.1159, 32, 1e-6
 QWEN_PENULT_LAYER = 35          # Qwen3-4B har 36 lager; hidden_states[-2] = ingang till det sista
 ENC_ON = "NPU" if os.environ.get("ZI_ENCODER_ON", str(DEFAULTS.get("encoder", "cpu"))) == "npu" else "CPU"   # for etiketten
+
+# --- the text encoder as a short-lived NPU process (encoder = npu) -----------------------------
+# Everything the NPU sees is pinned and counts as committed memory, so the encoder must not sit on
+# the NPU between prompts. zimage-encode.exe loads Qwen3-4B (from the file cache), answers READY,
+# encodes ONE templated prompt to cap_feats (hidden_states[-2]), frees the model and exits by itself
+# - a clean DSP shutdown. Measured 09-28: ready 1.4 s, encode 0.86 s, +2.8 GB committed only while
+# it lives, cos 1.00000 against the llama-server encoder.
+ENCODE_EXE = BIN / "zimage-encode.exe"
+CHAT_TEMPLATE = ("<|im_start|>user\n", "<|im_end|>\n<|im_start|>assistant\n")   # == /apply-template (checked)
+
+
+class NpuEncoder:
+    def __init__(self):
+        import threading
+        env = {**os.environ, "ADSP_LIBRARY_PATH": str(BIN)}
+        self.p = subprocess.Popen([str(ENCODE_EXE), str(ENC), "HTP0", str(QWEN_PENULT_LAYER)],
+                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                  text=True, encoding="utf-8", env=env,
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        self.ready, self.err = threading.Event(), None
+        threading.Thread(target=self._wait_ready, daemon=True).start()
+
+    def _wait_ready(self):
+        line = self.p.stdout.readline().strip()
+        if line != "READY":
+            self.err = line or "the encoder process ended"
+        self.ready.set()
+
+    def encode(self, prompt, workdir):
+        self.ready.wait(180)
+        if self.err:
+            self.close()
+            raise RuntimeError("text encoder: " + self.err)
+        tf, of = Path(workdir) / "encode_in.txt", Path(workdir) / "encode_out.f32"
+        tf.write_bytes((CHAT_TEMPLATE[0] + prompt + CHAT_TEMPLATE[1]).encode("utf-8"))
+        self.p.stdin.write("%s\t%s\n" % (tf, of))
+        self.p.stdin.flush()
+        ans = self.p.stdout.readline().strip()
+        self.close()                       # EOF: the process frees the model and exits by itself
+        if not ans.startswith("DONE"):
+            raise RuntimeError("text encoder: " + (ans or "no answer"))
+        return np.fromfile(of, dtype=np.float32).reshape(-1, CAPD)
+
+    def close(self):
+        try:
+            self.p.stdin.close()
+        except Exception:
+            pass
+
+
+_NPU_ENC = None
+
+
+def npu_encoder_prestart():
+    """REPL: called on the first key of a new prompt - the model loads while you type."""
+    global _NPU_ENC
+    if ENC_ON == "NPU" and _NPU_ENC is None and ENCODE_EXE.exists():
+        _NPU_ENC = NpuEncoder()
+
+
+def npu_encoder_release():
+    global _NPU_ENC
+    if _NPU_ENC is not None:
+        _NPU_ENC.close()
+        _NPU_ENC = None
+
 
 
 def log(msg, t0=None):
@@ -124,7 +190,16 @@ def _server_cap_feats(text, verbose):
 
 
 def cap_feats(prompt, workdir, verbose):
-    """Prompt -> [Scap, 2560] float32. Varm server om den finns, annars llama-embedding."""
+    """Prompt -> [Scap, 2560] float32. encoder=npu: kortlivad NPU-process (forstartad i repl).
+    Annars varm server om den finns, annars llama-embedding."""
+    global _NPU_ENC
+    if ENC_ON == "NPU" and ENCODE_EXE.exists():
+        enc = _NPU_ENC if _NPU_ENC is not None else NpuEncoder()
+        _NPU_ENC = None
+        a = enc.encode(prompt, workdir)
+        if verbose:
+            log(f"cap_feats {a.shape} std={a.std():.2f} (npu)")
+        return a
     text = _server_template(prompt)
     if text is not None:
         a = _server_cap_feats(text, verbose)
@@ -724,10 +799,12 @@ def unload_models(dit):
     return (c0 - c1 if c0 >= 0 and c1 >= 0 else 0.0), dropped
 
 
-def read_line(prompt, prompt_width, idle=None):
+def read_line(prompt, prompt_width, idle=None, on_key=None):
     """idle = (seconds, callback): after that long without a key the callback runs once and
     may return a line to show above the prompt (the REPL uses it to unload the models)."""
     if os.name != "nt" or not sys.stdin.isatty():
+        if on_key is not None:
+            on_key()
         return input(prompt)
     import msvcrt, shutil
     cols = max(20, shutil.get_terminal_size((100, 30)).columns)
@@ -764,6 +841,9 @@ def read_line(prompt, prompt_width, idle=None):
                     break
                 time.sleep(0.02)
         ch = msvcrt.getwch()
+        if on_key is not None:                      # forsta tangenten: NPU-encodern laddar medan du skriver
+            on_key()
+            on_key = None
         if ch in ("\r", "\n"):
             pos = len(buf); draw(); sys.stdout.write("\n"); sys.stdout.flush()
             line = "".join(buf)
@@ -851,6 +931,7 @@ def serve(a, tmp):
 
     def _idle():
         nonlocal dit
+        npu_encoder_release()
         freed, dropped = unload_models(dit)
         dit = None
         return (D + "  (idle %d s: image model unloaded - %.1f GB memory and %.1f GB cache given back)"
@@ -859,8 +940,9 @@ def serve(a, tmp):
     try:
         while True:
             try:
-                busy = dit is not None or _ESR is not None
-                line = read_line(G + "> " + O, 2, (unload_s, _idle) if (busy and unload_s > 0) else None)
+                busy = dit is not None or _ESR is not None or _NPU_ENC is not None
+                line = read_line(G + "> " + O, 2, (unload_s, _idle) if (busy and unload_s > 0) else None,
+                                 on_key=npu_encoder_prestart)
                 if "\x04" in line:                     # piped input can still carry it
                     raise EOFError
                 line = line.strip()
@@ -947,6 +1029,7 @@ def serve(a, tmp):
             except Exception as e:
                 print(f"  failed: {e}")
     finally:
+        npu_encoder_release()
         if dit: dit.close()
 
 

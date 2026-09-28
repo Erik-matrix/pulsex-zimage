@@ -4,12 +4,12 @@
 [![License: MIT](https://img.shields.io/github/license/anvandaren-matrix/pulsex-zimage)](LICENSE)
 
 PulseX turns a sentence into a picture with **Z-Image-Turbo**, running the diffusion
-transformer on the Hexagon NPU of a Snapdragon X laptop (Windows on ARM) through the PulseX
+transformer on the Hexagon NPU of a Snapdragon X Plus laptop (Windows on ARM) through the PulseX
 fork of ggml-hexagon. The command is `zimage`; the window and the UI say PulseX.
 
 | Stage | Model | Runs on |
 |---|---|---|
-| Text encoder | Qwen3-4B, GGUF Q4_0 (`hidden_states[-2]`) | CPU from the file cache (default) or NPU |
+| Text encoder | Qwen3-4B, GGUF Q4_0 (`hidden_states[-2]`) | NPU, loaded for each prompt (default), or CPU |
 | Diffusion transformer | Z-Image-Turbo, GGUF Q4_0, 4 steps | NPU (HTP0) |
 | Decoder | taef1 (C++/NEON) or the full Flux VAE | CPU |
 | Upscaler (512 → 1024) | Real-ESRGAN x4, QNN context via ONNX Runtime | NPU |
@@ -41,14 +41,14 @@ the other X1 chips have the same NPU and should work. Snapdragon X2 is untested:
 (`libggml-htp-v81.so`) is built and picked automatically, but the kernels were tuned on v73 and
 the Real-ESRGAN QNN context is compiled for X1 and has to be recompiled for X2.
 
-**Requirements:** a Snapdragon X laptop (Hexagon NPU v73 or newer) on Windows 11 ARM64, the
+**Requirements:** a Snapdragon X Plus laptop (Hexagon NPU v73; see Hardware) on Windows 11 ARM64, the
 [Microsoft Visual C++ Redistributable for ARM64](https://aka.ms/vs/17/release/vc_redist.arm64.exe)
 and Python 3.12 for ARM64 with `pip install -r requirements.txt`.
 
 **Download.** Clone the repository, or take the zip from the [latest release](https://github.com/anvandaren-matrix/pulsex-zimage/releases/latest) — both contain everything in this folder, binaries included.
 
 **Prebuilt binaries.** The release repository ships them in `bin/` (llama-server,
-zimage-dit-stream, ggml, taef1_decode and the DSP skel `libggml-htp-v7x.so` + catalog), plus
+zimage-dit-stream, zimage-encode, ggml, taef1_decode and the DSP skel `libggml-htp-v7x.so` + catalog), plus
 `zimage.exe` next to the scripts. To build them yourself: the PulseX fork of ggml-hexagon
 (`bld_wos.bat`; `zimage_stream.cpp` builds there as `examples/zimage_dit`), `bld_cli.bat` for
 `zimage.exe`, and `taef1_decode.cpp` from the PulseX tree.
@@ -185,7 +185,7 @@ the NPU memory. After 60 idle seconds the image model is unloaded on its own (se
 | `zimage help` | all commands and options |
 
 Rarely needed: `-Steps N` (the model is trained for 4), `-Vae full` (the reference decoder,
-slower), `-EncoderOn npu` (see Memory), `-NoServer` (no warm encoder, slower fallback),
+slower), `-EncoderOn cpu` (see Memory), `-NoServer` (no warm encoder, slower fallback),
 `-Pause` (wait for Enter before closing — for shortcuts), `-Cascade` (1024 via a 512 pass,
 experimental, with `-Tail N`).
 
@@ -199,7 +199,7 @@ Every key is documented in `zimage.example.json` (`_help`). Command-line options
 | `defaults.upscale` | `true` | 512 images go through Real-ESRGAN x4 to `upscale_to` |
 | `defaults.upscale_detail` | `0.5` | 0..1: share of the Real-ESRGAN result; the rest is a plain Lanczos enlargement. 1 is sharpest but can look plastic, 0 is softest. |
 | `defaults.shift` | `1.0` | sigma shift; 1.0 (linear [1, .75, .5, .25]) gave more skin and fur detail than 3.0 on every test prompt |
-| `defaults.encoder` | `cpu` | `cpu` or `npu`, see Memory |
+| `defaults.encoder` | `npu` | `npu`: loaded on the NPU for each prompt and released right after; `cpu`: a warm server reading the weights from the file cache. See Memory |
 | `defaults.enrich` | `false` | material words on by default |
 | `defaults.unload_after_s` | `60` | REPL: unload the image model after this many idle seconds (0 = never) |
 | `defaults.purge_on_start` / `purge_on_exit` | `standby` | empty Windows' standby cache when the REPL starts / on stop and exit: `standby`, `full` (also trim every process's working set) or `off` |
@@ -213,13 +213,16 @@ an X Plus (16 GB):
 |---|---|
 | Diffusion transformer weights | 3.3 GB |
 | its graph buffers (512 / 1024) | 0.15 / 0.6 GB |
-| Text encoder on the NPU | 2.8 GB |
-| Text encoder on the CPU (`--no-repack`, mmap) | 0.5 GB |
+| Text encoder on the NPU (default) | 2.8 GB — only for the ~2 s it is loaded; it starts while you type and exits after encoding |
+| Text encoder on the CPU (`-EncoderOn cpu`, `--no-repack`, mmap) | 0.5 GB, for the whole session |
 | Real-ESRGAN session | 0.9 GB — released after every upscale, reopened behind the next DiT run |
 | taef1 decoder at 1024 | 0.8 GB, only while decoding |
 
-That is why the encoder defaults to the CPU, and why the REPL unloads the image model after an
-idle minute (the next image then takes a few seconds longer).
+That is why nothing sits on the NPU that is not needed right now. The text encoder is a
+short-lived process (`zimage-encode.exe`): in the REPL it starts loading on the first key you type
+(~1.4 s, hidden behind your typing), encodes when you press Enter (~0.9 s), frees its memory and
+exits cleanly. It is never kept next to the image model. The image model itself is unloaded after
+an idle minute (the next image then takes a few seconds longer).
 
 To give PulseX room, the REPL can empty Windows' whole standby cache ("Cached" in Task Manager)
 when it starts and when it closes. That call needs administrator rights, so it only happens when
@@ -241,6 +244,7 @@ cache.
 | `zimage.ps1` | the CLI: commands, help, encoder-server lifecycle, cache cleanup |
 | `zimage.py` | the engine driver: encoder → DiT → decoder → upscaler, REPL, text overlay |
 | `zimage_stream.cpp` | `zimage-dit-stream.exe`, the DiT on ggml-hexagon (built by the ggml-hexagon tree) |
+| `zimage_encode.cpp` | `zimage-encode.exe`, the text encoder as a short-lived NPU process (same build) |
 | `zimage_launch.c`, `zimage.rc`, `zimage.ico`, `bld_cli.bat` | the `zimage.exe` launcher (also `--drop-cache` and `--purge`) |
 | `enrich.py`, `cues.json` | prompt enrichment |
 | `zimage.example.json` | configuration template |

@@ -141,7 +141,7 @@ function Show-Usage {
     Show-Rows @(
         @('-Steps <n>',         'denoising steps; the model is trained for 4',       "now $Steps"),
         @('-Vae taef1|full',    'decoder: taef1 is fast, full is the reference',     "now $Vae"),
-        @('-EncoderOn cpu|npu', 'text encoder: cpu uses ~2.3 GB less memory, npu is ~1 s faster', "now $EncoderOn"),
+        @('-EncoderOn npu|cpu', 'text encoder: npu loads per prompt while you type; cpu stays warm', "now $EncoderOn"),
         @('-Cascade',           '1024 via a 512 pass (faster, experimental)',        ''),
         @('-Tail <n>',          'steps the -Cascade refine stage re-runs',           "now $Tail")) Yellow 22 50
     W '  housekeeping' DarkGray
@@ -175,6 +175,8 @@ function Test-Encoder {
 }
 
 function Start-Encoder {
+    # npu: zimage.py starts zimage-encode.exe per prompt (nothing may sit on the NPU in between)
+    if ($EncoderOn -eq 'npu') { return }
     if (Test-Encoder) { return }
     # Ingen gissad tid har: den varierar med om modellen ligger i cachen eller inte.
     # Mat och rapportera i stallet - en pahittad siffra som alltid ar fel irriterar mer
@@ -362,7 +364,10 @@ switch ($Command) {
         $script:CleanupOnExit = -not $Keep
         Invoke-Engine ($common + '--serve')
     }
-    'serve'  { Start-Encoder; W "  the text encoder is listening on 127.0.0.1:$Port" Green }
+    'serve'  {
+        if ($EncoderOn -eq 'npu') { W '  the NPU text encoder starts per prompt - nothing to keep running (use -EncoderOn cpu for a warm server).' DarkGray; exit 0 }
+        Start-Encoder; W "  the text encoder is listening on 127.0.0.1:$Port" Green
+    }
     'stop'   {
         $mb = Stop-All
         W '  stopped. ' Green -NoNL
