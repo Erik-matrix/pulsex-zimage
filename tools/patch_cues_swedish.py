@@ -168,9 +168,16 @@ NEW = {
     "helbild": ("wide-angle view", "whole scene visible, depth"),
     "närbild": ("close-up", "shallow depth of field"),
     # 09-28: "tårtan har grädde på sidorna, inte virkade mormors-mönster"
-    "prinsesstårta": ("a Swedish princess cake on a table",
-                      "smooth green marzipan dome, whipped cream on the sides, one slice cut out showing "
-                      "sponge layers and cream, pink marzipan rose on top"),
+    # 09-28 (2): "som ett rymdskepp - inte så glansig, utan matt grön, och en rosa ros på
+    # toppen, inte för stor". "smooth" gav blank plast; rosen föll bort när budgeten tog slut ->
+    # rosen ligger nu i SUBSTANTIVET (läggs alltid först). Inga negationer ("not glossy" drar in glans).
+    # (3) referensbilder: LÅG BRED kupol, liten ros + två gröna blad; insida sockerkaka, hallonsylt,
+    # vaniljkräm, grädde under ett grönt marsipanlock. (4) 'inside'-ord ritade lagren UTANPÅ ->
+    # locket täcker hela tårtan; lagren syns bara i en uppskuren bit.
+    "prinsesstårta": ("a low, matte light-green Swedish princess cake with a small pink marzipan rose",
+                      "two green marzipan leaves, low wide rounded dome, dusted with powdered sugar, "
+                      "marzipan lid covering the whole cake down to the plate, "
+                      "one slice cut out revealing sponge, raspberry jam and vanilla cream"),
     # platsbundna spetsord: den generiska "fine crochet texture" lade modellen PA tartan
     "spetsgardin": ("lace curtains in the window", "sheer lace, soft backlight"),
     "spetsgardiner": ("lace curtains in the window", "sheer lace, soft backlight"),
