@@ -1,0 +1,57 @@
+{
+  "_about": "PulseX configuration. Copy this file to zimage.json (next to zimage.py) and edit the paths for your machine; zimage.json is not checked in. Read by zimage.ps1 and zimage.py. Relative paths are resolved against the json's folder; {models} expands to paths.models. ZIMAGE_CONFIG may point to another file. Command-line options override the defaults.",
+  "_help": {
+    "paths.models": "folder with the three models below - keep it on a fast SSD (an SD card made weight loading 23x slower)",
+    "paths.dit": "Z-Image-Turbo diffusion transformer, GGUF Q4_0",
+    "paths.encoder": "Qwen3-4B text encoder, GGUF Q4_0",
+    "paths.tokenizer": "HF tokenizer folder, only used when the encoder server is not running",
+    "paths.vae_full": "full Flux VAE (safetensors), only for --vae full",
+    "paths.taef1": "bin/taef1_decode.exe - the fast C++ VAE decoder (the default)",
+    "paths.bin": "prebuilt binaries shipped in bin/ (llama-server, zimage-dit-stream, ggml, the DSP skel)",
+    "paths.esrgan_x4": "Real-ESRGAN x4 QNN context wrapped as ONNX (for 512 + upscale)",
+    "paths.qnn_runtime": "QNN/QAIRT runtime folder with QnnHtp.dll (for the upscaler)",
+    "defaults.size": "512 or 1024",
+    "defaults.steps": "Z-Image-Turbo is distilled for 4",
+    "defaults.shift": "sigma shift; 1.0 = linear schedule [1, .75, .5, .25], measurably more skin/fur detail than 3.0",
+    "defaults.vae": "taef1 (fast) or full (reference)",
+    "defaults.encoder": "cpu reads the encoder weights straight from the file cache (~0.5 GB committed); npu is ~1 s faster on long prompts but commits ~2.8 GB",
+    "defaults.upscale": "512 images are upscaled x4 with Real-ESRGAN and resized to upscale_to",
+    "defaults.enrich": "append material words to the prompt (cues.json), e.g. 'skin pores, catchlight in the eyes'",
+    "defaults.unload_after_s": "REPL: unload the image model and drop its cache after this many idle seconds (0 = never)",
+    "server.port": "port of the warm text-encoder server (llama-server)",
+    "defaults.purge_on_start": "REPL start: empty Windows' whole standby cache ('Cached') before the models load. standby | full (also trim every process's working set, like PulseCore Memory) | off. Only when PulseX runs as administrator; otherwise only PulseX's own model files are dropped.",
+    "defaults.purge_on_exit": "the same on 'zimage stop' and when the REPL closes",
+    "defaults.upscale_detail": "0..1, how much of the Real-ESRGAN result is kept; the rest is a plain Lanczos enlargement. 1 = sharpest (can look plastic), 0 = softest."
+  },
+  "paths": {
+    "models": "C:/PulseCore/models/zImage",
+    "dit": "{models}/z-image-turbo-q4_0.gguf",
+    "encoder": "{models}/qwen3-4b-zimage-q4_0.gguf",
+    "tokenizer": "{models}/tokenizer",
+    "vae_full": "{models}/vae/ae.safetensors",
+    "taef1": "bin/taef1_decode.exe",
+    "bin": "bin",
+    "esrgan_x4": "C:/PulseCore/models/sdxl-qnn/esrgan_x4.bin.wrap.onnx",
+    "qnn_runtime": "C:/PulseCore/tools/qnn/2.46-runtime"
+  },
+  "defaults": {
+    "out": "zimage.jpg",
+    "size": 512,
+    "steps": 4,
+    "shift": 1.0,
+    "seed": 1234,
+    "quality": 95,
+    "vae": "taef1",
+    "encoder": "cpu",
+    "upscale": true,
+    "upscale_to": 1024,
+    "upscale_detail": 0.5,
+    "enrich": false,
+    "unload_after_s": 60,
+    "purge_on_start": "standby",
+    "purge_on_exit": "standby"
+  },
+  "server": {
+    "port": 8099
+  }
+}

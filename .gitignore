@@ -1,0 +1,38 @@
+# local configuration - copy zimage.example.json to zimage.json and set your paths
+zimage.json
+
+# generated images and previews
+*.jpg
+*.jpeg
+*.png
+!zimage_icon_preview.png
+
+# build and runtime scratch
+__pycache__/
+*.pyc
+*.bak
+*.bak2
+*.pre_*
+*.exe
+*.obj
+*.o
+*.dll
+*.lib
+*.exp
+*.pdb
+*.res
+*.log
+*.lnk
+tools/cdsptrace/*.dll
+tools/cdsptrace/*.obj
+tools/cdsptrace/*.lib
+tools/cdsptrace/*.exp
+tools/cdsptrace/build.log
+
+# example images for the README are part of the repo
+!docs/examples/*.jpg
+
+# prebuilt binaries are part of the release repository
+!zimage.exe
+!bin/*.exe
+!bin/*.dll

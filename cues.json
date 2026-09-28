@@ -1,0 +1,2900 @@
+{
+ "_about": "Prompt enrichment ported from the old ZImage (apps/zimage/zimage.cpp). Z-Image-Turbo is distilled to CFG=1: words like 'photorealistic' do nothing, MATERIAL words do. When a key appears in the prompt as a word, its fragments are appended (most specific key first) while they fit the token budget. 'front' fragments name things that must EXIST; plain ones describe how things look. Swedish keys point at the same (English) fragments as their English counterparts; inflected forms are listed explicitly.",
+ "budget_tokens": 70,
+ "front": [
+  [
+   "formula 1",
+   "with its helmeted driver visible in the cockpit, gloved hands on the squared-off steering wheel, dark visor"
+  ],
+  [
+   "race car",
+   "with its helmeted driver visible in the cockpit, gloved hands on the steering wheel"
+  ],
+  [
+   "driver",
+   "helmet with a dark visor, gloved hands on the wheel, shoulders and arms in the cockpit opening"
+  ],
+  [
+   "helmet",
+   "glossy shell, dark visor, curved highlight across the visor"
+  ],
+  [
+   "cockpit",
+   "driver seated low behind the halo, harness straps over the shoulders"
+  ],
+  [
+   "steering wheel",
+   "squared-off rectangular wheel, buttons and dials, gloved hands"
+  ],
+  [
+   "electrician",
+   "wearing a hard hat and work gloves, a tool belt at the hip, one gloved hand on the equipment"
+  ],
+  [
+   "elektriker",
+   "wearing a hard hat and work gloves, a tool belt at the hip, one gloved hand on the equipment"
+  ],
+  [
+   "multimeter",
+   "held in the free hand, its probe leads trailing down to the terminals"
+  ],
+  [
+   "screwdriver",
+   "in the working hand, its tip on a terminal screw"
+  ],
+  [
+   "skruvmejsel",
+   "in the working hand, its tip on a terminal screw"
+  ],
+  [
+   "switchgear",
+   "its door swung open, rows of breakers and terminal strips exposed"
+  ],
+  [
+   "stallverk",
+   "its door swung open, rows of breakers and terminal strips exposed"
+  ],
+  [
+   "fuse box",
+   "its cover open, rows of breakers exposed"
+  ],
+  [
+   "elskap",
+   "its door swung open, rows of breakers and terminal strips exposed"
+  ]
+ ],
+ "cues": [
+  [
+   "cat",
+   "detailed fur, individual whiskers, catchlight in the eyes"
+  ],
+  [
+   "kitten",
+   "detailed fur, individual whiskers, catchlight in the eyes"
+  ],
+  [
+   "katt",
+   "detailed fur, individual whiskers, catchlight in the eyes"
+  ],
+  [
+   "dog",
+   "detailed fur, wet nose, individual whiskers"
+  ],
+  [
+   "puppy",
+   "detailed fur, wet nose, individual whiskers"
+  ],
+  [
+   "hund",
+   "detailed fur, wet nose, individual whiskers"
+  ],
+  [
+   "horse",
+   "coat sheen, mane strands"
+  ],
+  [
+   "bird",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "owl",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "eagle",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "fish",
+   "wet scales, specular highlights"
+  ],
+  [
+   "portrait",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "face",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "woman",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "man",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "girl",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "boy",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "hair",
+   "individual strands"
+  ],
+  [
+   "forest",
+   "dappled light, moss and bark texture"
+  ],
+  [
+   "tree",
+   "bark texture, backlit leaves"
+  ],
+  [
+   "mountain",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "cliff",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "water",
+   "surface ripples, specular highlights"
+  ],
+  [
+   "ocean",
+   "surface ripples, sea spray"
+  ],
+  [
+   "sea",
+   "surface ripples, sea spray"
+  ],
+  [
+   "lake",
+   "surface ripples, specular highlights"
+  ],
+  [
+   "river",
+   "dark water, forested banks, mirror reflections"
+  ],
+  [
+   "rain",
+   "wet surfaces, water droplets"
+  ],
+  [
+   "snow",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "ice",
+   "sparkling ice crystals"
+  ],
+  [
+   "fire",
+   "glowing embers, soft light falloff"
+  ],
+  [
+   "flower",
+   "petal veins, pollen detail"
+  ],
+  [
+   "rose",
+   "petal veins, dew droplets"
+  ],
+  [
+   "food",
+   "glistening surface, steam"
+  ],
+  [
+   "bread",
+   "crumb texture, flour dust"
+  ],
+  [
+   "fruit",
+   "glistening surface, skin texture"
+  ],
+  [
+   "car",
+   "reflective paint, crisp panel gaps, clean straight reflections in the bodywork"
+  ],
+  [
+   "ferrari",
+   "glossy paint, mirror-like reflections, carbon fibre detail, sharp body lines"
+  ],
+  [
+   "porsche",
+   "glossy paint, mirror-like reflections, sharp body lines"
+  ],
+  [
+   "lamborghini",
+   "glossy paint, mirror-like reflections, sharp body lines"
+  ],
+  [
+   "supercar",
+   "glossy paint, mirror-like reflections, sharp body lines"
+  ],
+  [
+   "sports car",
+   "glossy paint, mirror-like reflections, sharp body lines"
+  ],
+  [
+   "motorcycle",
+   "reflective paint, chrome detail, crisp panel gaps"
+  ],
+  [
+   "chrome",
+   "mirror finish, sharp highlights"
+  ],
+  [
+   "city",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "street",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "night",
+   "practical lights, deep shadows"
+  ],
+  [
+   "sunset",
+   "warm rim light, long shadows"
+  ],
+  [
+   "sunrise",
+   "warm rim light, long shadows"
+  ],
+  [
+   "metal",
+   "brushed metal texture, sharp specular highlights"
+  ],
+  [
+   "steel",
+   "brushed metal texture, sharp specular highlights"
+  ],
+  [
+   "wood",
+   "visible grain"
+  ],
+  [
+   "wooden",
+   "visible grain"
+  ],
+  [
+   "glass",
+   "refraction, sharp specular highlights"
+  ],
+  [
+   "fabric",
+   "woven fibre texture"
+  ],
+  [
+   "sweater",
+   "woven fibre texture"
+  ],
+  [
+   "wool",
+   "woven fibre texture"
+  ],
+  [
+   "leather",
+   "grain and creases"
+  ],
+  [
+   "skin",
+   "pores, subsurface scattering"
+  ],
+  [
+   "jungle",
+   "humid haze, broad tropical leaves, hanging vines, dense undergrowth"
+  ],
+  [
+   "rainforest",
+   "humid haze, broad tropical leaves, hanging vines, dense undergrowth"
+  ],
+  [
+   "tropical",
+   "broad glossy leaves, saturated green"
+  ],
+  [
+   "tiger",
+   "detailed striped fur, individual whiskers, amber eyes"
+  ],
+  [
+   "leopard",
+   "detailed spotted fur, individual whiskers"
+  ],
+  [
+   "lion",
+   "detailed mane strands, individual whiskers"
+  ],
+  [
+   "palm",
+   "frond texture, backlit leaves"
+  ],
+  [
+   "fern",
+   "frond detail, dappled light"
+  ],
+  [
+   "beach",
+   "wet sand texture, sea foam, distant horizon"
+  ],
+  [
+   "shore",
+   "wet sand texture, sea foam"
+  ],
+  [
+   "coast",
+   "spray, wet rock, distant horizon"
+  ],
+  [
+   "wave",
+   "translucent crest, spray, foam"
+  ],
+  [
+   "sand",
+   "grain texture, wind ripples"
+  ],
+  [
+   "horizon",
+   "atmospheric gradient, distant haze"
+  ],
+  [
+   "moose",
+   "coarse guard hairs, wet muzzle, breath vapour"
+  ],
+  [
+   "elk",
+   "coarse guard hairs, wet muzzle, breath vapour"
+  ],
+  [
+   "bear",
+   "dense layered fur, claw detail, wet nose"
+  ],
+  [
+   "woodpecker",
+   "individual feathers, sharp beak detail, bark grip"
+  ],
+  [
+   "chanterelle",
+   "ridged gills, forest floor litter, shallow depth of field"
+  ],
+  [
+   "mushroom",
+   "cap texture, forest floor litter"
+  ],
+  [
+   "aurora",
+   "green curtains of light, star field, long exposure"
+  ],
+  [
+   "northern lights",
+   "green curtains of light, star field, long exposure"
+  ],
+  [
+   "stream",
+   "flowing water, wet stones, silky long exposure"
+  ],
+  [
+   "creek",
+   "flowing water, wet stones, silky long exposure"
+  ],
+  [
+   "brook",
+   "flowing water, wet stones, silky long exposure"
+  ],
+  [
+   "birch",
+   "white bark with dark scars, backlit leaves"
+  ],
+  [
+   "spruce",
+   "needle detail, snow-laden branches"
+  ],
+  [
+   "pine",
+   "needle detail, bark texture"
+  ],
+  [
+   "cabin",
+   "weathered timber, visible grain, snow on the roof"
+  ],
+  [
+   "cottage",
+   "weathered timber, visible grain"
+  ],
+  [
+   "lapland",
+   "nordic light, low sun, long blue shadows"
+  ],
+  [
+   "nordic",
+   "nordic light, low sun, long blue shadows"
+  ],
+  [
+   "frost",
+   "ice crystals on every surface, blue shadows"
+  ],
+  [
+   "blizzard",
+   "wind-driven snow, low contrast, cold haze"
+  ],
+  [
+   "cafe",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "servering",
+   "worn timber, enamel signs, warm interior light, patina"
+  ],
+  [
+   "coffee",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "fika",
+   "porcelain cups, glazed pastry, lace tablecloth"
+  ],
+  [
+   "waffle",
+   "golden grid pattern, powdered sugar, cream"
+  ],
+  [
+   "bun",
+   "pearl sugar, glazed crust, crumb texture"
+  ],
+  [
+   "pastry",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "string lights",
+   "warm bokeh points, dusk glow"
+  ],
+  [
+   "paper star",
+   "warm glow through paper, window frame"
+  ],
+  [
+   "enamel sign",
+   "chipped enamel, worn paint, faded lettering"
+  ],
+  [
+   "porch",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "veranda",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "lace",
+   "fine crochet texture"
+  ],
+  [
+   "retro",
+   "period furniture, patina, worn upholstery"
+  ],
+  [
+   "vintage",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "chapel",
+   "weathered timber, tall windows, warm light"
+  ],
+  [
+   "church",
+   "weathered timber, tall windows, warm light"
+  ],
+  [
+   "candle",
+   "warm flame, soft light falloff"
+  ],
+  [
+   "thonet",
+   "bentwood curves, dark lacquer"
+  ],
+  [
+   "armchair",
+   "worn upholstery, patterned fabric"
+  ],
+  [
+   "lampshade",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "table lamp",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "houseplant",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "shop window",
+   "large pane, street reflections, daylight beyond"
+  ],
+  [
+   "curtain",
+   "heavy fabric folds, soft light falloff"
+  ],
+  [
+   "cushion",
+   "woven fibre texture, worn edges"
+  ],
+  [
+   "diner",
+   "red vinyl bench seating, chrome trim, industrial pendant lamps in a row"
+  ],
+  [
+   "jukebox",
+   "chrome and coloured plastic, warm glow"
+  ],
+  [
+   "vinyl record",
+   "record sleeves on the wall, black discs, sleeve print"
+  ],
+  [
+   "records",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "pendant lamp",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "neon",
+   "saturated tube glow, colour spill on nearby surfaces"
+  ],
+  [
+   "chrome",
+   "mirror finish, sharp highlights"
+  ],
+  [
+   "classic car",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "hot rod",
+   "polished chrome, deep lacquer, sharp panel gaps"
+  ],
+  [
+   "cadillac",
+   "polished chrome, deep lacquer, tail fins, whitewall tyres"
+  ],
+  [
+   "pickup",
+   "worn paint, chrome bumper, honest wear"
+  ],
+  [
+   "drum kit",
+   "cymbal sheen, lacquered shells"
+  ],
+  [
+   "guitar",
+   "lacquer sheen, string detail"
+  ],
+  [
+   "mural",
+   "wall-sized print, bold graphics"
+  ],
+  [
+   "rapids",
+   "white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "waterfall",
+   "falling water, rising mist, wet rock face"
+  ],
+  [
+   "midnight sun",
+   "low golden sun, glowing mist, long light across the water"
+  ],
+  [
+   "mist",
+   "backlit haze, soft depth layers"
+  ],
+  [
+   "riverbank",
+   "wet stones, exposed roots, forested edge"
+  ],
+  [
+   "boulder",
+   "lichen patches, wet stone, fracture detail"
+  ],
+  [
+   "bridge",
+   "steel span, reflections in the water below"
+  ],
+  [
+   "aerial",
+   "high viewpoint, receding landscape, atmospheric depth"
+  ],
+  [
+   "canyon",
+   "sheer rock walls, still dark water below"
+  ],
+  [
+   "fishing",
+   "line arc, water droplets, waders in the current"
+  ],
+  [
+   "ice",
+   "sparkling ice crystals, blue shadows"
+  ],
+  [
+   "harbour",
+   "moored boats, calm water reflections, quayside"
+  ],
+  [
+   "harbor",
+   "moored boats, calm water reflections, quayside"
+  ],
+  [
+   "waterfront",
+   "quayside, mirror water, low buildings along the shore"
+  ],
+  [
+   "church spire",
+   "verdigris copper spire, brick facade"
+  ],
+  [
+   "steeple",
+   "verdigris copper spire, brick facade"
+  ],
+  [
+   "brick",
+   "worn brick courses, mortar lines"
+  ],
+  [
+   "town square",
+   "cobbles, shopfronts, rowan trees"
+  ],
+  [
+   "station",
+   "wooden station building, carved gables, platform"
+  ],
+  [
+   "rowan",
+   "clustered orange berries, pinnate leaves"
+  ],
+  [
+   "boat",
+   "hull reflections, mooring lines"
+  ],
+  [
+   "dusk",
+   "pink and blue gradient, lit windows"
+  ],
+  [
+   "blue hour",
+   "deep blue sky, warm lit windows"
+  ],
+  [
+   "bunting",
+   "strings of small flags across the street"
+  ],
+  [
+   "boathouse",
+   "falu red boathouses along the quay, tarred timber"
+  ],
+  [
+   "marina",
+   "masts, moored sailboats, wooden jetties"
+  ],
+  [
+   "jetty",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "pier",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "steamboat",
+   "white hull, brass and varnish, funnel"
+  ],
+  [
+   "mill",
+   "steam plume against cold sky, stacks, power lines"
+  ],
+  [
+   "factory",
+   "steam plume against cold sky, stacks, power lines"
+  ],
+  [
+   "wind turbine",
+   "slender white tower above the treeline"
+  ],
+  [
+   "sea ice",
+   "ice sheets, dark open leads, snow-covered islands"
+  ],
+  [
+   "archipelago",
+   "scattered wooded islands, shallow water, low shoreline"
+  ],
+  [
+   "thaw",
+   "patchy snow on bare ground, wet grass, meltwater"
+  ],
+  [
+   "reeds",
+   "dry reed stems, still water, sandbars"
+  ],
+  [
+   "willow",
+   "drooping branches, silver-green leaves"
+  ],
+  [
+   "quay",
+   "cut stone edge, mirror water"
+  ],
+  [
+   "log cabin",
+   "falu red timber, wood shingle roof, brick chimney"
+  ],
+  [
+   "ice road",
+   "plowed track across sea ice, low sun, distant town on the horizon"
+  ],
+  [
+   "ice track",
+   "plowed track across sea ice, low sun, skate marks"
+  ],
+  [
+   "snowmobile",
+   "snow plume behind the track, headlight, riders in a line"
+  ],
+  [
+   "skating",
+   "swept ice, skate marks, long shadows"
+  ],
+  [
+   "ice rink",
+   "swept ice, skate marks, floodlight glare"
+  ],
+  [
+   "ski slope",
+   "groomed piste, floodlight masts, blue dusk"
+  ],
+  [
+   "floodlight",
+   "hard directional light, long shadows on snow"
+  ],
+  [
+   "snow sculpture",
+   "carved snow block, tool marks, crisp edges"
+  ],
+  [
+   "christmas lights",
+   "warm bulb strings on snowy spruce, blue night"
+  ],
+  [
+   "polar night",
+   "deep blue daylight, artificial light spilling onto snow"
+  ],
+  [
+   "town hall",
+   "wooden classical facade, pilasters, painted panelling"
+  ],
+  [
+   "snowbank",
+   "plowed snow walls, tracked surface"
+  ],
+  [
+   "portrait",
+   "skin pores, natural skin texture, catchlight in the eyes, 85mm lens, shallow depth of field"
+  ],
+  [
+   "face",
+   "skin pores, subsurface scattering, catchlight in the eyes, individual eyelashes"
+  ],
+  [
+   "headshot",
+   "85mm lens, f/1.8, soft key light, catchlight in the eyes"
+  ],
+  [
+   "smile",
+   "crow feet, natural asymmetry, teeth detail"
+  ],
+  [
+   "elderly",
+   "deep wrinkles, thin skin, age spots, white stubble"
+  ],
+  [
+   "child",
+   "smooth skin, soft fine hair, large iris"
+  ],
+  [
+   "beard",
+   "individual whiskers, varied length, skin visible beneath"
+  ],
+  [
+   "freckles",
+   "scattered pigment, uneven density"
+  ],
+  [
+   "eyes",
+   "iris fibres, wet corner, sharp lash line"
+  ],
+  [
+   "rembrandt",
+   "single soft key from the side, triangle of light on the cheek"
+  ],
+  [
+   "rim light",
+   "bright edge separating subject from background"
+  ],
+  [
+   "window light",
+   "soft directional light, gentle falloff across the face"
+  ],
+  [
+   "formula 1",
+   "carbon fibre weave, glossy livery, slick tyres with sidewall text, panning shot, sharp car against motion-blurred background"
+  ],
+  [
+   "race car",
+   "glossy livery, slick tyres, panning shot, motion-blurred background"
+  ],
+  [
+   "grand prix",
+   "grandstands, kerbs, timing boards, heat haze"
+  ],
+  [
+   "racetrack",
+   "red and white kerbs, painted run-off, tyre marbles"
+  ],
+  [
+   "kerb",
+   "red and white painted rumble strip"
+  ],
+  [
+   "pit lane",
+   "garage lights, tyre stacks, crew in team kit"
+  ],
+  [
+   "grid",
+   "cars in staggered rows, painted grid boxes, heat shimmer"
+  ],
+  [
+   "monza",
+   "long straights, tree-lined parkland, italian tricolour kerbs"
+  ],
+  [
+   "carbon fibre",
+   "woven weave under clear lacquer"
+  ],
+  [
+   "panning",
+   "sharp subject, streaked background, sense of speed"
+  ],
+  [
+   "track map",
+   "minimal line drawing of a circuit, flat background, poster layout"
+  ],
+  [
+   "glove",
+   "orange nitrile-dipped grip palm, textured dimples, fabric back"
+  ],
+  [
+   "handske",
+   "orange nitrile-dipped grip palm, textured dimples, fabric back"
+  ],
+  [
+   "electrician",
+   "worn workwear, scuffed knees, dust on the sleeves"
+  ],
+  [
+   "elektriker",
+   "worn workwear, scuffed knees, dust on the sleeves"
+  ],
+  [
+   "hard hat",
+   "scuffed shell, ratchet band at the back"
+  ],
+  [
+   "hardhat",
+   "scuffed shell, ratchet band at the back"
+  ],
+  [
+   "cable",
+   "insulation sheen, bundled runs held by cable ties"
+  ],
+  [
+   "kabel",
+   "insulation sheen, bundled runs held by cable ties"
+  ],
+  [
+   "wire",
+   "insulation sheen, copper strands at the stripped ends"
+  ],
+  [
+   "copper",
+   "warm oxidised sheen, bent conductor runs"
+  ],
+  [
+   "busbar",
+   "flat machined faces, bolted joints"
+  ],
+  [
+   "breaker",
+   "moulded case, printed rating text, toggle levers in a row"
+  ],
+  [
+   "switchgear",
+   "brushed steel panel, labelled terminal strips"
+  ],
+  [
+   "stallverk",
+   "brushed steel panel, labelled terminal strips"
+  ],
+  [
+   "terminal",
+   "brass screws, numbered strip"
+  ],
+  [
+   "multimeter",
+   "moulded case, segmented display, red and black leads"
+  ],
+  [
+   "screwdriver",
+   "insulated shaft, moulded grip"
+  ],
+  [
+   "skruvmejsel",
+   "insulated shaft, moulded grip"
+  ],
+  [
+   "tool belt",
+   "worn leather pouches, steel tips showing"
+  ],
+  [
+   "verktyg",
+   "worn grips, oily steel"
+  ],
+  [
+   "workshop",
+   "oil-stained floor, tool marks, cold overhead light"
+  ],
+  [
+   "verkstad",
+   "oil-stained floor, tool marks, cold overhead light"
+  ],
+  [
+   "älg",
+   "coarse guard hairs, wet muzzle, breath vapour"
+  ],
+  [
+   "älgen",
+   "coarse guard hairs, wet muzzle, breath vapour"
+  ],
+  [
+   "älgar",
+   "coarse guard hairs, wet muzzle, breath vapour"
+  ],
+  [
+   "björn",
+   "dense layered fur, claw detail, wet nose"
+  ],
+  [
+   "björnen",
+   "dense layered fur, claw detail, wet nose"
+  ],
+  [
+   "hackspett",
+   "individual feathers, sharp beak detail, bark grip"
+  ],
+  [
+   "kantarell",
+   "ridged gills, forest floor litter, shallow depth of field"
+  ],
+  [
+   "kantareller",
+   "ridged gills, forest floor litter, shallow depth of field"
+  ],
+  [
+   "svamp",
+   "cap texture, forest floor litter"
+  ],
+  [
+   "svampar",
+   "cap texture, forest floor litter"
+  ],
+  [
+   "norrsken",
+   "green curtains of light, star field, long exposure"
+  ],
+  [
+   "norrskenet",
+   "green curtains of light, star field, long exposure"
+  ],
+  [
+   "bäck",
+   "flowing water, wet stones, silky long exposure"
+  ],
+  [
+   "bäcken",
+   "flowing water, wet stones, silky long exposure"
+  ],
+  [
+   "björk",
+   "white bark with dark scars, backlit leaves"
+  ],
+  [
+   "björken",
+   "white bark with dark scars, backlit leaves"
+  ],
+  [
+   "björkar",
+   "white bark with dark scars, backlit leaves"
+  ],
+  [
+   "gran",
+   "needle detail, snow-laden branches"
+  ],
+  [
+   "granen",
+   "needle detail, snow-laden branches"
+  ],
+  [
+   "granar",
+   "needle detail, snow-laden branches"
+  ],
+  [
+   "tallen",
+   "needle detail, bark texture"
+  ],
+  [
+   "stuga",
+   "weathered timber, visible grain, snow on the roof"
+  ],
+  [
+   "stugan",
+   "weathered timber, visible grain, snow on the roof"
+  ],
+  [
+   "stugor",
+   "weathered timber, visible grain, snow on the roof"
+  ],
+  [
+   "timmerstuga",
+   "weathered timber, visible grain, snow on the roof"
+  ],
+  [
+   "lappland",
+   "nordic light, low sun, long blue shadows"
+  ],
+  [
+   "nordisk",
+   "nordic light, low sun, long blue shadows"
+  ],
+  [
+   "nordiskt",
+   "nordic light, low sun, long blue shadows"
+  ],
+  [
+   "snöstorm",
+   "wind-driven snow, low contrast, cold haze"
+  ],
+  [
+   "skog",
+   "dappled light, moss and bark texture"
+  ],
+  [
+   "skogen",
+   "dappled light, moss and bark texture"
+  ],
+  [
+   "träd",
+   "bark texture, backlit leaves"
+  ],
+  [
+   "fjäll",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "fjället",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "berg",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "berget",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "sjö",
+   "surface ripples, specular highlights"
+  ],
+  [
+   "sjön",
+   "surface ripples, specular highlights"
+  ],
+  [
+   "älv",
+   "dark water, forested banks, mirror reflections"
+  ],
+  [
+   "älven",
+   "dark water, forested banks, mirror reflections"
+  ],
+  [
+   "flod",
+   "dark water, forested banks, mirror reflections"
+  ],
+  [
+   "hav",
+   "surface ripples, sea spray"
+  ],
+  [
+   "havet",
+   "surface ripples, sea spray"
+  ],
+  [
+   "strand",
+   "wet sand texture, sea foam, distant horizon"
+  ],
+  [
+   "stranden",
+   "wet sand texture, sea foam, distant horizon"
+  ],
+  [
+   "snö",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "snön",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "regn",
+   "wet surfaces, water droplets"
+  ],
+  [
+   "dimma",
+   "backlit haze, soft depth layers"
+  ],
+  [
+   "natt",
+   "practical lights, deep shadows"
+  ],
+  [
+   "natten",
+   "practical lights, deep shadows"
+  ],
+  [
+   "solnedgång",
+   "warm rim light, long shadows"
+  ],
+  [
+   "blomma",
+   "petal veins, pollen detail"
+  ],
+  [
+   "blommor",
+   "petal veins, pollen detail"
+  ],
+  [
+   "häst",
+   "coat sheen, mane strands"
+  ],
+  [
+   "hästen",
+   "coat sheen, mane strands"
+  ],
+  [
+   "uggla",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "ugglan",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "katten",
+   "detailed fur, individual whiskers, catchlight in the eyes"
+  ],
+  [
+   "hunden",
+   "detailed fur, wet nose, individual whiskers"
+  ],
+  [
+   "fors",
+   "white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "forsen",
+   "white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "forsar",
+   "white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "forsarna",
+   "white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "vattenfall",
+   "falling water, rising mist, wet rock face"
+  ],
+  [
+   "vattenfallet",
+   "falling water, rising mist, wet rock face"
+  ],
+  [
+   "midnattssol",
+   "low golden sun, glowing mist, long light across the water"
+  ],
+  [
+   "midnattssolen",
+   "low golden sun, glowing mist, long light across the water"
+  ],
+  [
+   "älvstrand",
+   "wet stones, exposed roots, forested edge"
+  ],
+  [
+   "älvstranden",
+   "wet stones, exposed roots, forested edge"
+  ],
+  [
+   "stenblock",
+   "lichen patches, wet stone, fracture detail"
+  ],
+  [
+   "kanjon",
+   "sheer rock walls, still dark water below"
+  ],
+  [
+   "fiske",
+   "line arc, water droplets, waders in the current"
+  ],
+  [
+   "flugfiske",
+   "line arc, water droplets, waders in the current"
+  ],
+  [
+   "havsis",
+   "ice sheets, dark open leads, snow-covered islands"
+  ],
+  [
+   "havsisen",
+   "ice sheets, dark open leads, snow-covered islands"
+  ],
+  [
+   "skärgård",
+   "scattered wooded islands, shallow water, low shoreline"
+  ],
+  [
+   "skärgården",
+   "scattered wooded islands, shallow water, low shoreline"
+  ],
+  [
+   "islossning",
+   "patchy snow on bare ground, wet grass, meltwater"
+  ],
+  [
+   "töväder",
+   "patchy snow on bare ground, wet grass, meltwater"
+  ],
+  [
+   "vass",
+   "dry reed stems, still water, sandbars"
+  ],
+  [
+   "vassen",
+   "dry reed stems, still water, sandbars"
+  ],
+  [
+   "sälg",
+   "drooping branches, silver-green leaves"
+  ],
+  [
+   "kaj",
+   "cut stone edge, mirror water"
+  ],
+  [
+   "kajen",
+   "cut stone edge, mirror water"
+  ],
+  [
+   "blockhus",
+   "falu red timber, wood shingle roof, brick chimney"
+  ],
+  [
+   "timmerhus",
+   "falu red timber, wood shingle roof, brick chimney"
+  ],
+  [
+   "isväg",
+   "plowed track across sea ice, low sun, distant town on the horizon"
+  ],
+  [
+   "isvägen",
+   "plowed track across sea ice, low sun, distant town on the horizon"
+  ],
+  [
+   "isbana",
+   "plowed track across sea ice, low sun, skate marks"
+  ],
+  [
+   "skoter",
+   "snow plume behind the track, headlight, riders in a line"
+  ],
+  [
+   "skotern",
+   "snow plume behind the track, headlight, riders in a line"
+  ],
+  [
+   "snöskoter",
+   "snow plume behind the track, headlight, riders in a line"
+  ],
+  [
+   "skridskor",
+   "swept ice, skate marks, long shadows"
+  ],
+  [
+   "skridskoåkning",
+   "swept ice, skate marks, long shadows"
+  ],
+  [
+   "ishall",
+   "swept ice, skate marks, floodlight glare"
+  ],
+  [
+   "isrink",
+   "swept ice, skate marks, floodlight glare"
+  ],
+  [
+   "skidbacke",
+   "groomed piste, floodlight masts, blue dusk"
+  ],
+  [
+   "slalombacke",
+   "groomed piste, floodlight masts, blue dusk"
+  ],
+  [
+   "strålkastare",
+   "hard directional light, long shadows on snow"
+  ],
+  [
+   "snöskulptur",
+   "carved snow block, tool marks, crisp edges"
+  ],
+  [
+   "julbelysning",
+   "warm bulb strings on snowy spruce, blue night"
+  ],
+  [
+   "polarnatt",
+   "deep blue daylight, artificial light spilling onto snow"
+  ],
+  [
+   "mörkertid",
+   "deep blue daylight, artificial light spilling onto snow"
+  ],
+  [
+   "stadshus",
+   "wooden classical facade, pilasters, painted panelling"
+  ],
+  [
+   "rådhus",
+   "wooden classical facade, pilasters, painted panelling"
+  ],
+  [
+   "snövall",
+   "plowed snow walls, tracked surface"
+  ],
+  [
+   "snövallar",
+   "plowed snow walls, tracked surface"
+  ],
+  [
+   "plogvall",
+   "plowed snow walls, tracked surface"
+  ],
+  [
+   "rönn",
+   "clustered orange berries, pinnate leaves"
+  ],
+  [
+   "rönnen",
+   "clustered orange berries, pinnate leaves"
+  ],
+  [
+   "rönnbär",
+   "clustered orange berries, pinnate leaves"
+  ],
+  [
+   "båthus",
+   "falu red boathouses along the quay, tarred timber"
+  ],
+  [
+   "sjöbod",
+   "falu red boathouses along the quay, tarred timber"
+  ],
+  [
+   "sjöbodar",
+   "falu red boathouses along the quay, tarred timber"
+  ],
+  [
+   "småbåtshamn",
+   "masts, moored sailboats, wooden jetties"
+  ],
+  [
+   "gästhamn",
+   "masts, moored sailboats, wooden jetties"
+  ],
+  [
+   "brygga",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "bryggan",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "pir",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "piren",
+   "weathered planks receding, worn posts, open water"
+  ],
+  [
+   "ångbåt",
+   "white hull, brass and varnish, funnel"
+  ],
+  [
+   "hjulångare",
+   "white hull, brass and varnish, funnel"
+  ],
+  [
+   "kvarn",
+   "steam plume against cold sky, stacks, power lines"
+  ],
+  [
+   "sågverk",
+   "steam plume against cold sky, stacks, power lines"
+  ],
+  [
+   "fabrik",
+   "steam plume against cold sky, stacks, power lines"
+  ],
+  [
+   "vindkraftverk",
+   "slender white tower above the treeline"
+  ],
+  [
+   "skymning",
+   "pink and blue gradient, lit windows"
+  ],
+  [
+   "skymningen",
+   "pink and blue gradient, lit windows"
+  ],
+  [
+   "blåtimmen",
+   "deep blue sky, warm lit windows"
+  ],
+  [
+   "vimplar",
+   "strings of small flags across the street"
+  ],
+  [
+   "kyrktorn",
+   "verdigris copper spire, brick facade"
+  ],
+  [
+   "torg",
+   "cobbles, shopfronts, rowan trees"
+  ],
+  [
+   "torget",
+   "cobbles, shopfronts, rowan trees"
+  ],
+  [
+   "stationen",
+   "wooden station building, carved gables, platform"
+  ],
+  [
+   "järnvägsstation",
+   "wooden station building, carved gables, platform"
+  ],
+  [
+   "isen",
+   "sparkling ice crystals, blue shadows"
+  ],
+  [
+   "frosten",
+   "ice crystals on every surface, blue shadows"
+  ],
+  [
+   "rimfrost",
+   "ice crystals on every surface, blue shadows"
+  ],
+  [
+   "örn",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "örnen",
+   "individual feathers, sharp beak detail"
+  ],
+  [
+   "fjällbjörk",
+   "white bark with dark scars, backlit leaves"
+  ],
+  [
+   "tjärn",
+   "surface ripples, specular highlights"
+  ],
+  [
+   "kalfjäll",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "kalfjället",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "fjällen",
+   "rock texture, atmospheric haze"
+  ],
+  [
+   "eld",
+   "glowing embers, soft light falloff"
+  ],
+  [
+   "brasa",
+   "glowing embers, soft light falloff"
+  ],
+  [
+   "lägereld",
+   "glowing embers, soft light falloff"
+  ],
+  [
+   "kvinna",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "kvinnan",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "mannen",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "flicka",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "flickan",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "tjej",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "pojke",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "pojken",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "kille",
+   "skin pores, natural skin texture, catchlight in the eyes"
+  ],
+  [
+   "porträtt",
+   "skin pores, natural skin texture, catchlight in the eyes, 85mm lens, shallow depth of field"
+  ],
+  [
+   "ansikte",
+   "skin pores, subsurface scattering, catchlight in the eyes, individual eyelashes"
+  ],
+  [
+   "ansiktet",
+   "skin pores, subsurface scattering, catchlight in the eyes, individual eyelashes"
+  ],
+  [
+   "bron",
+   "steel span, reflections in the water below"
+  ],
+  [
+   "hamn",
+   "moored boats, calm water reflections, quayside"
+  ],
+  [
+   "hamnen",
+   "moored boats, calm water reflections, quayside"
+  ],
+  [
+   "båt",
+   "hull reflections, mooring lines"
+  ],
+  [
+   "båten",
+   "hull reflections, mooring lines"
+  ],
+  [
+   "bil",
+   "reflective paint, crisp panel gaps, clean straight reflections in the bodywork"
+  ],
+  [
+   "bilen",
+   "reflective paint, crisp panel gaps, clean straight reflections in the bodywork"
+  ],
+  [
+   "stad",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "staden",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "gata",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "gatan",
+   "wet asphalt reflections, window detail"
+  ],
+  [
+   "bröd",
+   "crumb texture, flour dust"
+  ],
+  [
+   "kafé",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "kafét",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "kaféet",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "kafe",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "café",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "kaffe",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "bulle",
+   "pearl sugar, glazed crust, crumb texture"
+  ],
+  [
+   "bullar",
+   "pearl sugar, glazed crust, crumb texture"
+  ],
+  [
+   "kanelbulle",
+   "pearl sugar, glazed crust, crumb texture"
+  ],
+  [
+   "våffla",
+   "golden grid pattern, powdered sugar, cream"
+  ],
+  [
+   "våfflor",
+   "golden grid pattern, powdered sugar, cream"
+  ],
+  [
+   "ljusslinga",
+   "warm bokeh points, dusk glow"
+  ],
+  [
+   "ljusslingor",
+   "warm bokeh points, dusk glow"
+  ],
+  [
+   "pappersstjärna",
+   "warm glow through paper, window frame"
+  ],
+  [
+   "adventsstjärna",
+   "warm glow through paper, window frame"
+  ],
+  [
+   "emaljskylt",
+   "chipped enamel, worn paint, faded lettering"
+  ],
+  [
+   "emaljskyltar",
+   "chipped enamel, worn paint, faded lettering"
+  ],
+  [
+   "spets",
+   "fine crochet texture"
+  ],
+  [
+   "kyrka",
+   "weathered timber, tall windows, warm light"
+  ],
+  [
+   "kyrkan",
+   "weathered timber, tall windows, warm light"
+  ],
+  [
+   "kapell",
+   "weathered timber, tall windows, warm light"
+  ],
+  [
+   "stearinljus",
+   "warm flame, soft light falloff"
+  ],
+  [
+   "fåtölj",
+   "worn upholstery, patterned fabric"
+  ],
+  [
+   "bordslampa",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "krukväxt",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "krukväxter",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "skyltfönster",
+   "large pane, street reflections, daylight beyond"
+  ],
+  [
+   "gardin",
+   "heavy fabric folds, soft light falloff"
+  ],
+  [
+   "gardiner",
+   "heavy fabric folds, soft light falloff"
+  ],
+  [
+   "kudde",
+   "woven fibre texture, worn edges"
+  ],
+  [
+   "kuddar",
+   "woven fibre texture, worn edges"
+  ],
+  [
+   "vinylskiva",
+   "record sleeves on the wall, black discs, sleeve print"
+  ],
+  [
+   "vinylskivor",
+   "record sleeves on the wall, black discs, sleeve print"
+  ],
+  [
+   "amerikanare",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "raggarbil",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "veteranbil",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "kaféer",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "kaféerna",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "fik",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "fiket",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "konditori",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "konditoriet",
+   "warm lamp pools against cool window daylight, mismatched second-hand furniture, potted plants, patina"
+  ],
+  [
+   "serveringen",
+   "worn timber, enamel signs, warm interior light, patina"
+  ],
+  [
+   "kaffekopp",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "kaffekoppar",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "kopp",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "koppar",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "espresso",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "cappuccino",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "latte",
+   "steam, crema, porcelain cup"
+  ],
+  [
+   "fikat",
+   "porcelain cups, glazed pastry, lace tablecloth"
+  ],
+  [
+   "fikabröd",
+   "porcelain cups, glazed pastry, lace tablecloth"
+  ],
+  [
+   "kaka",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "kakor",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "bakelse",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "bakelser",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "wienerbröd",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "tårta",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "pepparkakor",
+   "glazed crust, crumb texture"
+  ],
+  [
+   "kardemummabulle",
+   "pearl sugar, glazed crust, crumb texture"
+  ],
+  [
+   "ljusslingan",
+   "warm bokeh points, dusk glow"
+  ],
+  [
+   "julstjärna",
+   "warm glow through paper, window frame"
+  ],
+  [
+   "emaljskylten",
+   "chipped enamel, worn paint, faded lettering"
+  ],
+  [
+   "reklamskylt",
+   "chipped enamel, worn paint, faded lettering"
+  ],
+  [
+   "verandan",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "förstukvist",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "farstukvist",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "altan",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "altanen",
+   "weathered decking, worn steps, warm lamp"
+  ],
+  [
+   "virkad",
+   "fine crochet texture"
+  ],
+  [
+   "virkat",
+   "fine crochet texture"
+  ],
+  [
+   "virkad duk",
+   "fine crochet texture"
+  ],
+  [
+   "femtiotal",
+   "period furniture, patina, worn upholstery"
+  ],
+  [
+   "femtiotalet",
+   "period furniture, patina, worn upholstery"
+  ],
+  [
+   "sextiotal",
+   "period furniture, patina, worn upholstery"
+  ],
+  [
+   "loppis",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "loppisfynd",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "begagnade",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "gammaldags",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "patina",
+   "patina, worn paint, aged surfaces"
+  ],
+  [
+   "ljusstake",
+   "warm flame, soft light falloff"
+  ],
+  [
+   "levande ljus",
+   "warm flame, soft light falloff"
+  ],
+  [
+   "thonetstol",
+   "bentwood curves, dark lacquer"
+  ],
+  [
+   "thonetstolar",
+   "bentwood curves, dark lacquer"
+  ],
+  [
+   "böjträstol",
+   "bentwood curves, dark lacquer"
+  ],
+  [
+   "böjträstolar",
+   "bentwood curves, dark lacquer"
+  ],
+  [
+   "fåtöljen",
+   "worn upholstery, patterned fabric"
+  ],
+  [
+   "fåtöljer",
+   "worn upholstery, patterned fabric"
+  ],
+  [
+   "länstol",
+   "worn upholstery, patterned fabric"
+  ],
+  [
+   "lampskärm",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "lampskärmar",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "golvlampa",
+   "warm pooled light, fabric shade"
+  ],
+  [
+   "taklampa",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "taklampor",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "pendellampa",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "industrilampa",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "industrilampor",
+   "industrial black shade, focused pool of light"
+  ],
+  [
+   "blomkruka",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "pelargon",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "pelargoner",
+   "backlit leaves, leaf vein detail"
+  ],
+  [
+   "skyltfönstret",
+   "large pane, street reflections, daylight beyond"
+  ],
+  [
+   "draperi",
+   "heavy fabric folds, soft light falloff"
+  ],
+  [
+   "draperier",
+   "heavy fabric folds, soft light falloff"
+  ],
+  [
+   "dyna",
+   "woven fibre texture, worn edges"
+  ],
+  [
+   "dynor",
+   "woven fibre texture, worn edges"
+  ],
+  [
+   "dinern",
+   "red vinyl bench seating, chrome trim, industrial pendant lamps in a row"
+  ],
+  [
+   "hamburgerbar",
+   "red vinyl bench seating, chrome trim, industrial pendant lamps in a row"
+  ],
+  [
+   "gatukök",
+   "red vinyl bench seating, chrome trim, industrial pendant lamps in a row"
+  ],
+  [
+   "rockabilly",
+   "red vinyl bench seating, chrome trim, industrial pendant lamps in a row"
+  ],
+  [
+   "jukeboxen",
+   "chrome and coloured plastic, warm glow"
+  ],
+  [
+   "lp",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "lp-skiva",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "lp-skivor",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "skivor",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "skivomslag",
+   "record sleeves on the wall, black discs"
+  ],
+  [
+   "neonskylt",
+   "saturated tube glow, colour spill on nearby surfaces"
+  ],
+  [
+   "neonskyltar",
+   "saturated tube glow, colour spill on nearby surfaces"
+  ],
+  [
+   "neonljus",
+   "saturated tube glow, colour spill on nearby surfaces"
+  ],
+  [
+   "krom",
+   "mirror finish, sharp highlights"
+  ],
+  [
+   "förkromad",
+   "mirror finish, sharp highlights"
+  ],
+  [
+   "jänkare",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "jänkarbil",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "amerikanska bilar",
+   "polished chrome, deep lacquer, whitewall tyres, sharp panel gaps"
+  ],
+  [
+   "hotrod",
+   "polished chrome, deep lacquer, sharp panel gaps"
+  ],
+  [
+   "trumset",
+   "cymbal sheen, lacquered shells"
+  ],
+  [
+   "trummor",
+   "cymbal sheen, lacquered shells"
+  ],
+  [
+   "gitarr",
+   "lacquer sheen, string detail"
+  ],
+  [
+   "gitarren",
+   "lacquer sheen, string detail"
+  ],
+  [
+   "väggmålning",
+   "wall-sized print, bold graphics"
+  ],
+  [
+   "tegel",
+   "worn brick courses, mortar lines"
+  ],
+  [
+   "tegelvägg",
+   "worn brick courses, mortar lines"
+  ],
+  [
+   "granskog",
+   "needle detail, snow-laden branches, dappled light, moss and bark texture"
+  ],
+  [
+   "granskogen",
+   "needle detail, snow-laden branches, dappled light, moss and bark texture"
+  ],
+  [
+   "tallskog",
+   "needle detail, bark texture, dappled light, moss and bark texture"
+  ],
+  [
+   "tallskogen",
+   "needle detail, bark texture, dappled light, moss and bark texture"
+  ],
+  [
+   "björkskog",
+   "white bark with dark scars, backlit leaves, dappled light, moss and bark texture"
+  ],
+  [
+   "björkskogen",
+   "white bark with dark scars, backlit leaves, dappled light, moss and bark texture"
+  ],
+  [
+   "snöig",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "snöigt",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "snöiga",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "snötäckt",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "snötäckta",
+   "sparkling ice crystals, blue shadows, snow-laden branches"
+  ],
+  [
+   "kalixälven",
+   "dark water, forested banks, mirror reflections, white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "råneälven",
+   "dark water, forested banks, mirror reflections, white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "luleälven",
+   "dark water, forested banks, mirror reflections, white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "piteälven",
+   "dark water, forested banks, mirror reflections, white water, heavy spray, wet dark rock, motion in the foam"
+  ],
+  [
+   "kakelugn",
+   "glazed tiles, rounded corners, warm corner glow"
+  ],
+  [
+   "kakelugnen",
+   "glazed tiles, rounded corners, warm corner glow"
+  ],
+  [
+   "vedspis",
+   "warm firelight, soot-dark iron"
+  ],
+  [
+   "trägolv",
+   "worn boards, visible grain, soft sheen"
+  ],
+  [
+   "plankgolv",
+   "worn boards, visible grain, soft sheen"
+  ],
+  [
+   "blommig tapet",
+   "faded printed pattern, slight paper texture"
+  ],
+  [
+   "tapet",
+   "faded printed pattern"
+  ],
+  [
+   "tapeten",
+   "faded printed pattern"
+  ],
+  [
+   "vaxduk",
+   "glossy printed pattern, slightly creased"
+  ],
+  [
+   "rutig duk",
+   "woven check pattern, soft folds"
+  ],
+  [
+   "bokhylla",
+   "worn book spines, uneven rows"
+  ],
+  [
+   "bokhyllan",
+   "worn book spines, uneven rows"
+  ],
+  [
+   "kaffepanna",
+   "chipped enamel, steam from the spout"
+  ],
+  [
+   "porslin",
+   "thin rim, glaze sheen, floral decor"
+  ],
+  [
+   "ren",
+   "thick winter coat, antlers, breath vapour"
+  ],
+  [
+   "renar",
+   "thick winter coat, antlers, breath vapour"
+  ],
+  [
+   "renen",
+   "thick winter coat, antlers, breath vapour"
+  ],
+  [
+   "renhjord",
+   "thick winter coats, antlers, breath vapour, trampled snow"
+  ],
+  [
+   "räv",
+   "dense red fur, bushy white-tipped tail"
+  ],
+  [
+   "räven",
+   "dense red fur, bushy white-tipped tail"
+  ],
+  [
+   "varg",
+   "thick grey fur, amber eyes"
+  ],
+  [
+   "vargen",
+   "thick grey fur, amber eyes"
+  ],
+  [
+   "lodjur",
+   "tufted ears, spotted fur, large paws"
+  ],
+  [
+   "järv",
+   "dense dark brown fur, pale side stripe"
+  ],
+  [
+   "tjäder",
+   "dark iridescent feathers, fanned tail"
+  ],
+  [
+   "ripa",
+   "white winter plumage, feathered feet"
+  ],
+  [
+   "ripor",
+   "white winter plumage, feathered feet"
+  ],
+  [
+   "myr",
+   "cotton grass, reflective pools, low shrubs"
+  ],
+  [
+   "myren",
+   "cotton grass, reflective pools, low shrubs"
+  ],
+  [
+   "hjortron",
+   "amber-orange berries, bog leaves"
+  ],
+  [
+   "lingon",
+   "glossy red berries, small dark green leaves"
+  ],
+  [
+   "blåbär",
+   "dusty blue bloom on the berries"
+  ],
+  [
+   "bastu",
+   "dark timber walls, steam, wood-fired stove"
+  ],
+  [
+   "vedtrave",
+   "split birch logs, bark texture"
+  ],
+  [
+   "vedstapel",
+   "split birch logs, bark texture"
+  ],
+  [
+   "kåta",
+   "birch poles, smoke hole, reindeer hides"
+  ],
+  [
+   "kåtan",
+   "birch poles, smoke hole, reindeer hides"
+  ],
+  [
+   "kåsa",
+   "birch burl grain, worn rim"
+  ],
+  [
+   "sparkstötting",
+   "steel runners, wooden seat"
+  ],
+  [
+   "hundspann",
+   "huskies in harness, breath vapour, snow spray"
+  ],
+  [
+   "gruva",
+   "rusted headframe, ore dust, industrial scale"
+  ],
+  [
+   "gruvan",
+   "rusted headframe, ore dust, industrial scale"
+  ],
+  [
+   "midsommar",
+   "maypole, flower wreaths, bright night sky"
+  ],
+  [
+   "höst",
+   "golden birch leaves, crisp air, low sun"
+  ],
+  [
+   "hösten",
+   "golden birch leaves, crisp air, low sun"
+  ],
+  [
+   "vinter",
+   "snow, cold blue light"
+  ],
+  [
+   "vintern",
+   "snow, cold blue light"
+  ],
+  [
+   "sommarnatt",
+   "bright night sky, soft low light"
+  ],
+  [
+   "hatt",
+   "felt brim, worn hatband"
+  ],
+  [
+   "hatten",
+   "felt brim, worn hatband"
+  ],
+  [
+   "mössa",
+   "chunky knit texture"
+  ],
+  [
+   "interiör",
+   "whole room visible, depth, window light"
+  ],
+  [
+   "interiörbild",
+   "whole room visible, depth, window light"
+  ],
+  [
+   "vidvinkel",
+   "whole scene visible, depth"
+  ],
+  [
+   "helbild",
+   "whole scene visible, depth"
+  ],
+  [
+   "närbild",
+   "shallow depth of field"
+  ],
+  [
+   "prinsesstårta",
+   "smooth green marzipan dome, whipped cream on the sides, one slice cut out showing sponge layers and cream, pink marzipan rose on top"
+  ],
+  [
+   "spetsgardin",
+   "sheer lace, soft backlight"
+  ],
+  [
+   "spetsgardiner",
+   "sheer lace, soft backlight"
+  ],
+  [
+   "spetsduk",
+   "white lace on the table edge"
+  ],
+  [
+   "semla",
+   "whipped cream, almond paste, powdered sugar lid"
+  ],
+  [
+   "semlor",
+   "whipped cream, almond paste, powdered sugar lid"
+  ]
+ ],
+ "photo_words": [
+  "photo",
+  "photograph",
+  "photorealistic",
+  "realistic",
+  "dslr",
+  "portrait"
+ ],
+ "photo_add": "shallow depth of field, natural light, sharp focus",
+ "nouns": {
+  "älg": "moose",
+  "älgen": "moose",
+  "älgar": "moose",
+  "björn": "bear",
+  "björnen": "bear",
+  "hackspett": "woodpecker",
+  "kantarell": "chanterelle",
+  "kantareller": "chanterelle",
+  "svamp": "mushroom",
+  "svampar": "mushroom",
+  "norrsken": "aurora",
+  "norrskenet": "aurora",
+  "bäck": "stream",
+  "bäcken": "stream",
+  "björk": "birch",
+  "björken": "birch",
+  "björkar": "birch",
+  "gran": "spruce",
+  "granen": "spruce",
+  "granar": "spruce",
+  "tallen": "pine",
+  "stuga": "cabin",
+  "stugan": "cabin",
+  "stugor": "cabin",
+  "timmerstuga": "cabin",
+  "lappland": "lapland",
+  "nordisk": "nordic",
+  "nordiskt": "nordic",
+  "snöstorm": "blizzard",
+  "skog": "forest",
+  "skogen": "forest",
+  "träd": "tree",
+  "fjäll": "mountain",
+  "fjället": "mountain",
+  "berg": "mountain",
+  "berget": "mountain",
+  "sjö": "lake",
+  "sjön": "lake",
+  "älv": "river",
+  "älven": "river",
+  "flod": "river",
+  "hav": "sea",
+  "havet": "sea",
+  "strand": "beach",
+  "stranden": "beach",
+  "snö": "snow",
+  "snön": "snow",
+  "regn": "rain",
+  "dimma": "mist",
+  "natt": "night",
+  "natten": "night",
+  "solnedgång": "sunset",
+  "blomma": "flower",
+  "blommor": "flower",
+  "häst": "horse",
+  "hästen": "horse",
+  "uggla": "owl",
+  "ugglan": "owl",
+  "katten": "cat",
+  "hunden": "dog",
+  "fors": "rapids",
+  "forsen": "rapids",
+  "forsar": "rapids",
+  "forsarna": "rapids",
+  "vattenfall": "waterfall",
+  "vattenfallet": "waterfall",
+  "midnattssol": "midnight sun",
+  "midnattssolen": "midnight sun",
+  "älvstrand": "riverbank",
+  "älvstranden": "riverbank",
+  "stenblock": "boulder",
+  "kanjon": "canyon",
+  "fiske": "fishing",
+  "flugfiske": "fishing",
+  "havsis": "sea ice",
+  "havsisen": "sea ice",
+  "skärgård": "archipelago",
+  "skärgården": "archipelago",
+  "islossning": "thaw",
+  "töväder": "thaw",
+  "vass": "reeds",
+  "vassen": "reeds",
+  "sälg": "willow",
+  "kaj": "quay",
+  "kajen": "quay",
+  "blockhus": "log cabin",
+  "timmerhus": "log cabin",
+  "isväg": "ice road",
+  "isvägen": "ice road",
+  "isbana": "ice track",
+  "skoter": "snowmobile",
+  "skotern": "snowmobile",
+  "snöskoter": "snowmobile",
+  "skridskor": "skating",
+  "skridskoåkning": "skating",
+  "ishall": "ice rink",
+  "isrink": "ice rink",
+  "skidbacke": "ski slope",
+  "slalombacke": "ski slope",
+  "strålkastare": "floodlight",
+  "snöskulptur": "snow sculpture",
+  "julbelysning": "christmas lights",
+  "polarnatt": "polar night",
+  "mörkertid": "polar night",
+  "stadshus": "town hall",
+  "rådhus": "town hall",
+  "snövall": "snowbank",
+  "snövallar": "snowbank",
+  "plogvall": "snowbank",
+  "rönn": "rowan",
+  "rönnen": "rowan",
+  "rönnbär": "rowan",
+  "båthus": "boathouse",
+  "sjöbod": "boathouse",
+  "sjöbodar": "boathouse",
+  "småbåtshamn": "marina",
+  "gästhamn": "marina",
+  "brygga": "jetty",
+  "bryggan": "jetty",
+  "pir": "pier",
+  "piren": "pier",
+  "ångbåt": "steamboat",
+  "hjulångare": "steamboat",
+  "kvarn": "mill",
+  "sågverk": "mill",
+  "fabrik": "factory",
+  "vindkraftverk": "wind turbine",
+  "skymning": "dusk",
+  "skymningen": "dusk",
+  "blåtimmen": "blue hour",
+  "vimplar": "bunting",
+  "kyrktorn": "church spire",
+  "torg": "town square",
+  "torget": "town square",
+  "stationen": "station",
+  "järnvägsstation": "station",
+  "isen": "ice",
+  "frosten": "frost",
+  "rimfrost": "frost",
+  "örn": "eagle",
+  "örnen": "eagle",
+  "fjällbjörk": "birch",
+  "tjärn": "lake",
+  "kalfjäll": "mountain",
+  "kalfjället": "mountain",
+  "fjällen": "mountain",
+  "eld": "fire",
+  "brasa": "fire",
+  "lägereld": "fire",
+  "kvinna": "woman",
+  "kvinnan": "woman",
+  "mannen": "man",
+  "flicka": "girl",
+  "flickan": "girl",
+  "tjej": "girl",
+  "pojke": "boy",
+  "pojken": "boy",
+  "kille": "boy",
+  "porträtt": "portrait",
+  "ansikte": "face",
+  "ansiktet": "face",
+  "bron": "bridge",
+  "hamn": "harbour",
+  "hamnen": "harbour",
+  "båt": "boat",
+  "båten": "boat",
+  "bil": "car",
+  "bilen": "car",
+  "stad": "city",
+  "staden": "city",
+  "gata": "street",
+  "gatan": "street",
+  "bröd": "bread",
+  "kafé": "cafe interior",
+  "kafét": "cafe interior",
+  "kaféet": "cafe interior",
+  "kafe": "cafe interior",
+  "café": "cafe interior",
+  "kaffe": "coffee",
+  "bulle": "bun",
+  "bullar": "bun",
+  "kanelbulle": "bun",
+  "våffla": "waffle",
+  "våfflor": "waffle",
+  "ljusslinga": "string lights",
+  "ljusslingor": "string lights",
+  "pappersstjärna": "paper star",
+  "adventsstjärna": "paper star",
+  "emaljskylt": "enamel sign",
+  "emaljskyltar": "enamel sign",
+  "spets": "lace",
+  "kyrka": "church",
+  "kyrkan": "church",
+  "kapell": "chapel",
+  "stearinljus": "candle",
+  "fåtölj": "armchair",
+  "bordslampa": "table lamp",
+  "krukväxt": "houseplant",
+  "krukväxter": "houseplant",
+  "skyltfönster": "shop window",
+  "gardin": "curtain",
+  "gardiner": "curtain",
+  "kudde": "cushion",
+  "kuddar": "cushion",
+  "vinylskiva": "vinyl record",
+  "vinylskivor": "vinyl record",
+  "amerikanare": "classic car",
+  "raggarbil": "classic car",
+  "veteranbil": "classic car",
+  "kaféer": "cafe interior",
+  "kaféerna": "cafe interior",
+  "fik": "cafe interior",
+  "fiket": "cafe interior",
+  "konditori": "cafe interior",
+  "konditoriet": "cafe interior",
+  "serveringen": "cafe interior",
+  "kaffekopp": "coffee",
+  "kaffekoppar": "coffee",
+  "kopp": "coffee",
+  "koppar": "coffee",
+  "espresso": "coffee",
+  "cappuccino": "coffee",
+  "latte": "coffee",
+  "fikat": "fika",
+  "fikabröd": "fika",
+  "kaka": "pastry",
+  "kakor": "pastry",
+  "bakelse": "pastry",
+  "bakelser": "pastry",
+  "wienerbröd": "pastry",
+  "tårta": "pastry",
+  "pepparkakor": "pastry",
+  "kardemummabulle": "bun",
+  "ljusslingan": "string lights",
+  "julstjärna": "paper star",
+  "emaljskylten": "enamel sign",
+  "reklamskylt": "enamel sign",
+  "verandan": "veranda",
+  "förstukvist": "porch",
+  "farstukvist": "porch",
+  "altan": "porch",
+  "altanen": "porch",
+  "virkad": "lace",
+  "virkat": "lace",
+  "virkad duk": "lace",
+  "femtiotal": "retro",
+  "femtiotalet": "retro",
+  "sextiotal": "retro",
+  "loppis": "vintage",
+  "loppisfynd": "vintage",
+  "begagnade": "vintage",
+  "gammaldags": "vintage",
+  "patina": "vintage",
+  "ljusstake": "candle",
+  "levande ljus": "candle",
+  "thonetstol": "thonet",
+  "thonetstolar": "thonet",
+  "böjträstol": "thonet",
+  "böjträstolar": "thonet",
+  "fåtöljen": "armchair",
+  "fåtöljer": "armchair",
+  "länstol": "armchair",
+  "lampskärm": "lampshade",
+  "lampskärmar": "lampshade",
+  "golvlampa": "lampshade",
+  "taklampa": "pendant lamp",
+  "taklampor": "pendant lamp",
+  "pendellampa": "pendant lamp",
+  "industrilampa": "pendant lamp",
+  "industrilampor": "pendant lamp",
+  "blomkruka": "houseplant",
+  "pelargon": "houseplant",
+  "pelargoner": "houseplant",
+  "skyltfönstret": "shop window",
+  "draperi": "curtain",
+  "draperier": "curtain",
+  "dyna": "cushion",
+  "dynor": "cushion",
+  "dinern": "diner",
+  "hamburgerbar": "diner",
+  "gatukök": "diner",
+  "rockabilly": "diner",
+  "jukeboxen": "jukebox",
+  "lp": "records",
+  "lp-skiva": "records",
+  "lp-skivor": "records",
+  "skivor": "records",
+  "skivomslag": "records",
+  "neonskylt": "neon",
+  "neonskyltar": "neon",
+  "neonljus": "neon",
+  "krom": "chrome",
+  "förkromad": "chrome",
+  "jänkare": "classic car",
+  "jänkarbil": "classic car",
+  "amerikanska bilar": "classic car",
+  "hotrod": "hot rod",
+  "trumset": "drum kit",
+  "trummor": "drum kit",
+  "gitarr": "guitar",
+  "gitarren": "guitar",
+  "väggmålning": "mural",
+  "tegel": "brick",
+  "tegelvägg": "brick",
+  "granskog": "spruce forest",
+  "granskogen": "spruce forest",
+  "tallskog": "pine forest",
+  "tallskogen": "pine forest",
+  "björkskog": "birch forest",
+  "björkskogen": "birch forest",
+  "snöig": "snowy",
+  "snöigt": "snowy",
+  "snöiga": "snowy",
+  "snötäckt": "snow-covered",
+  "snötäckta": "snow-covered",
+  "kalixälven": "wild northern river with rapids",
+  "råneälven": "wild northern river with rapids",
+  "luleälven": "wide northern river",
+  "piteälven": "wild northern river with rapids",
+  "kakelugn": "tiled stove",
+  "kakelugnen": "tiled stove",
+  "vedspis": "cast-iron wood stove",
+  "trägolv": "wooden floorboards",
+  "plankgolv": "wooden floorboards",
+  "blommig tapet": "floral wallpaper",
+  "tapet": "patterned wallpaper",
+  "tapeten": "patterned wallpaper",
+  "vaxduk": "oilcloth tablecloth",
+  "rutig duk": "checked tablecloth",
+  "bokhylla": "bookshelf",
+  "bokhyllan": "bookshelf",
+  "kaffepanna": "enamel coffee pot",
+  "porslin": "porcelain",
+  "ren": "reindeer",
+  "renar": "reindeer",
+  "renen": "reindeer",
+  "renhjord": "reindeer herd",
+  "räv": "red fox",
+  "räven": "red fox",
+  "varg": "grey wolf",
+  "vargen": "grey wolf",
+  "lodjur": "lynx",
+  "järv": "wolverine",
+  "tjäder": "capercaillie",
+  "ripa": "ptarmigan",
+  "ripor": "ptarmigans",
+  "myr": "northern bog",
+  "myren": "northern bog",
+  "hjortron": "cloudberries",
+  "lingon": "lingonberries",
+  "blåbär": "blueberries",
+  "bastu": "sauna",
+  "vedtrave": "woodpile",
+  "vedstapel": "woodpile",
+  "kåta": "Sami lavvu tent",
+  "kåtan": "Sami lavvu tent",
+  "kåsa": "carved wooden kuksa cup",
+  "sparkstötting": "kick sled",
+  "hundspann": "dog sled team",
+  "gruva": "iron ore mine",
+  "gruvan": "iron ore mine",
+  "midsommar": "Swedish midsummer",
+  "höst": "autumn",
+  "hösten": "autumn",
+  "vinter": "winter",
+  "vintern": "winter",
+  "sommarnatt": "light summer night",
+  "hatt": "hat",
+  "hatten": "hat",
+  "mössa": "knitted wool hat",
+  "interiör": "wide interior shot",
+  "interiörbild": "wide interior shot",
+  "vidvinkel": "wide-angle view",
+  "helbild": "wide-angle view",
+  "närbild": "close-up",
+  "prinsesstårta": "a Swedish princess cake on a table",
+  "spetsgardin": "lace curtains in the window",
+  "spetsgardiner": "lace curtains in the window",
+  "spetsduk": "a lace tablecloth",
+  "semla": "semla cream bun",
+  "semlor": "semla cream buns"
+ }
+}

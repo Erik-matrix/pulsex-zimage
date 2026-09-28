@@ -1,0 +1,8 @@
+# Python 3.12 for Windows on ARM64.
+numpy
+pillow
+# Real-ESRGAN upscaler (512 -> 1024) on the NPU; ships QnnHtp.dll as well
+onnxruntime-qnn
+# Only for "-Vae full" (the reference decoder) and the no-server fallback tokenizer:
+# torch
+# transformers
