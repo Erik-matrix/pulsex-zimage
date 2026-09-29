@@ -40,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 $Root    = $PSScriptRoot
 # The window says PulseX; the command stays "zimage" (09-27).
 try { $Host.UI.RawUI.WindowTitle = 'PulseX' } catch {}
-$Version = '0.2'
+$Version = '0.4'
 
 # ---- configuration (zimage.json) -------------------------------------------------------------
 # Same rules as zimage.py: relative paths are resolved against the json's folder and {models}
