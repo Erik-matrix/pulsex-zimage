@@ -197,6 +197,11 @@ def cap_feats(prompt, workdir, verbose):
     """Prompt -> [Scap, 2560] float32. encoder=npu: kortlivad NPU-process (forstartad i repl).
     Annars varm server om den finns, annars llama-embedding."""
     global _NPU_ENC
+    # 09-30: the DiT carries a baked-in LoRA (UltraReal 0.6) whose trigger word goes first in every prompt
+    # (zimage.json defaults.prompt_prefix; empty = off). Here, so the CLI, the REPL and the server all get it.
+    pre = str(DEFAULTS.get("prompt_prefix", "") or "")
+    if pre and not prompt.lstrip().lower().startswith(pre.strip().rstrip(",").strip().lower()):
+        prompt = pre + prompt
     if ENC_ON == "NPU" and ENCODE_EXE.exists():
         enc = _NPU_ENC if _NPU_ENC is not None else NpuEncoder()
         _NPU_ENC = None

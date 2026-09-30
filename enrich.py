@@ -66,9 +66,10 @@ def _est_prompt(s):
     return max(w + p, (len(s.encode("utf-8")) + 2) // 3)
 
 
-def enrich(raw):
-    """Returns (prompt_to_send, added_fragments). Unchanged prompt when nothing matches."""
-    t = _table()
+def enrich(raw, table=None):
+    """Returns (prompt_to_send, added_fragments). Unchanged prompt when nothing matches.
+    `table`: another cue table with the same keys as cues.json (ltx_video merges in its video cues); default cues.json."""
+    t = table if table is not None else _table()
     low = raw.lower()
     hit = []
     for k, add in t["front"]:

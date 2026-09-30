@@ -6,3 +6,6 @@ onnxruntime-qnn
 # Only for "-Vae full" (the reference decoder) and the no-server fallback tokenizer:
 # torch
 # transformers
+# Only for build_lora_from_fp32.py (baking a LoRA in, see README):
+# gguf
+# safetensors

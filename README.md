@@ -32,6 +32,14 @@ text on the café is drawn afterwards, correctly spelled (see *Text on the pictu
 | ![An old man with a hat](docs/examples/man-with-hat.jpg) | ![An old café with text on the picture](docs/examples/open-house.jpg) |
 | `zimage make "portrait of an old man with a felt hat and a grey beard, warm evening light" -Size 1024 -Enrich -Seed 11` | `zimage make "interiörbild av ett gammalt konditori med kakelugn, spetsgardiner och prinsesstårta på porslin" -Size 1024 -Enrich -Seed 11 -Title "Öppet hus" -Subtitle "Lördag 10–14"` |
 
+**With the UltraReal LoRA** (see *A LoRA*) — the default size, 512 + upscale, about 14 s each. Typed as is;
+the LoRA's trigger word is added by itself:
+
+| | |
+|---|---|
+| ![A tabby cat in the jungle, with the UltraReal LoRA](docs/examples/ultrareal-cat.jpg) | ![An old sailor on a bench, with the UltraReal LoRA](docs/examples/ultrareal-sailor.jpg) |
+| `zimage make "a close up picture of a cat in jungle"` | `zimage make "a old sailor man sitting on a bench with his stick looking into camera with sad eyes"` |
+
 **Wide 480p** — 848 × 480, the frame size many of the newer video models work in:
 
 ![A moose on a snowy forest path at night, 848 x 480](docs/examples/moose-480p.jpg)
@@ -205,6 +213,28 @@ slower), `-EncoderOn cpu` (see Memory), `-NoServer` (no warm encoder, slower fal
 `-Pause` (wait for Enter before closing — for shortcuts), `-Cascade` (1024 via a 512 pass,
 experimental, with `-Tail N`).
 
+## A LoRA: UltraReal (optional)
+
+[Lenovo UltraReal](https://huggingface.co/Danrisi/Lenovo_UltraReal_Z_Image) (Apache-2.0) gives Z-Image-Turbo the
+look of a real camera: fur, skin, hands and lens blur like a photograph instead of a smooth rendering. The NPU
+engine has no LoRA at run time, so the LoRA is baked into the model once:
+
+1. Download the original transformer of [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
+   (the `transformer/` folder, about 24.6 GB) and the LoRA (`lenovo_z.safetensors`).
+2. Build the model (needs `pip install gguf safetensors torch`; it reads one tensor at a time, so it fits in a
+   normal amount of memory):
+
+   ```
+   python build_lora_from_fp32.py <transformer folder> <models>\z-image-turbo-q4_0.gguf <models>\z-image-turbo-ultrareal06-q4_0.gguf lenovo_z.safetensors 0.6
+   ```
+
+3. In `zimage.json` point `paths.dit` at the new file and set `defaults.prompt_prefix` to `"l3n0v0, "` — the
+   LoRA's trigger word, which is then put in front of every prompt automatically. The first image writes a new `.hexpack`.
+
+0.6 is the strength used for the examples; 1.0 is stronger. The LoRA is added to the **original** weights and
+quantized to Q4_0 once: adding it to the Q4_0 model directly (`merge_lora_q4.py`, kept for reference) keeps only a
+few percent of it, because small changes round back to the same Q4_0 value.
+
 ## Configuration (`zimage.json`)
 
 Every key is documented in `zimage.example.json` (`_help`). Command-line options win over it.
@@ -292,6 +322,7 @@ cache.
 | `zimage_encode.cpp`, `zimage_encode_stream.h` | `zimage-encode.exe`, the text encoder as a short-lived NPU process (same build); the header streams its layers through two slots |
 | `zimage_launch.c`, `zimage.rc`, `zimage.ico`, `bld_cli.bat` | the `zimage.exe` launcher (also `--drop-cache` and `--purge`) |
 | `enrich.py`, `cues.json` | prompt enrichment |
+| `build_lora_from_fp32.py` | bakes a LoRA into the Q4_0 model from the original weights (see *A LoRA*); `merge_lora_q4.py` = the route that does not work, kept for reference |
 | `zimage.example.json` | configuration template |
 | `tools/` | measurement and diagnostic scripts (memory sampler, profilers, probes) |
 | other `*.py` / `*.cpp` | development references and golden-data checks from the port |
