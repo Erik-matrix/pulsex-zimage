@@ -66,6 +66,45 @@ ESRGAN = PATHS["esrgan_x4"]
 QSR    = PATHS.get("quicksrnet_x4")          # 10-01: optional - without it the upscaler is ESRGAN
 QNN_RT = PATHS["qnn_runtime"]
 
+
+def npu_ascii_dir(src, kind, patterns=None):
+    """10-01: the NPU driver loads its runtime (ggml-hexagon / QnnHtp + stub + skel) only from a folder whose path is
+    plain ASCII - bin/ under a user folder with letters such as å/ä/ö failed ("the encoder process ended"). Such a folder is copied once to
+    %ProgramData%\\PulseX\\npu\\<kind>-<hash of names, sizes, times> and used from there; an ASCII folder is returned as it is."""
+    src = Path(src)
+    if str(src).isascii() or not src.is_dir():
+        return src
+    import hashlib, shutil
+    files = sorted(f for f in src.iterdir() if f.is_file() and (patterns is None or any(f.match(p) for p in patterns)))
+    if not files:
+        return src
+    h = hashlib.sha1()
+    for f in files:
+        st = f.stat()
+        h.update(("%s|%d|%d;" % (f.name, st.st_size, int(st.st_mtime))).encode("utf-8"))
+    dst = Path(os.environ.get("ProgramData") or r"C:\ProgramData") / "PulseX" / "npu" / ("%s-%s" % (kind, h.hexdigest()[:16]))
+    if not str(dst).isascii():
+        sys.exit("PulseX: the NPU cannot load its files from %s (letters outside A-Z) and ProgramData is not plain ASCII "
+                 "either - move PulseX to a folder such as C:\\PulseX" % src)
+    try:
+        dst.mkdir(parents=True, exist_ok=True)
+        for f in files:
+            d = dst / f.name
+            if not d.exists() or d.stat().st_size != f.stat().st_size:
+                shutil.copy2(f, d)
+    except OSError as e:
+        sys.exit("PulseX: the NPU cannot load its files from %s (letters outside A-Z), and copying them to %s failed (%s) - "
+                 "move PulseX to a folder such as C:\\PulseX" % (src, dst, e))
+    print("  (the NPU needs its files in a folder with plain letters: using a copy in %s)" % dst, file=sys.stderr, flush=True)
+    return dst
+
+
+BIN = npu_ascii_dir(BIN, "zimage-bin")
+QNN_RT = npu_ascii_dir(QNN_RT, "qnn-rt", ("Qnn*.dll", "libQnn*.so", "libqnn*.cat"))
+if sys.argv[1:2] == ["--ascii-bin"]:              # zimage.ps1: the folder to start the encoder server from
+    print(BIN)
+    sys.exit(0)
+
 # Z-Image: VAE skalar 8x, patch 2, 16 latentkanaler, cap_feats ar 2560-dim.
 INCH, PATCH, VAEF, CAPD = 16, 2, 8, 2560
 SCALE, SHIFT, GN_G, EPS = 0.3611, 0.1159, 32, 1e-6

@@ -88,6 +88,12 @@ zimage-dit-stream, zimage-encode, ggml, taef1_decode and the DSP skel `libggml-h
 **Configure.** Copy `zimage.example.json` to `zimage.json` and set the paths (`zimage.json` is
 local and not checked in). `zimage config` lists every path with `[ok]` or `[MISSING]`.
 
+**Folder names.** Paths may contain any letters (å, ä, ö, Ł …): the models, the work files and your user name.
+One exception comes from the NPU driver: it only loads its runtime from a folder whose path is plain A–Z. When
+`bin/` or the QNN runtime sits in such a folder (for example under `C:\Users\<a name with å/ä/ö>\Downloads`), PulseX
+copies it once to `C:\ProgramData\PulseX\npu\` and runs it from there, and says so in one line. To avoid the copy,
+keep PulseX in a folder such as `C:\PulseX`.
+
 ## Making images
 
 ```

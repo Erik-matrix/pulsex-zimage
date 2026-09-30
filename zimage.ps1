@@ -41,7 +41,7 @@ $ErrorActionPreference = 'Stop'
 $Root    = $PSScriptRoot
 # The window says PulseX; the command stays "zimage" (09-27).
 try { $Host.UI.RawUI.WindowTitle = 'PulseX' } catch {}
-$Version = '0.8'
+$Version = '0.9'
 
 # ---- configuration (zimage.json) -------------------------------------------------------------
 # Same rules as zimage.py: relative paths are resolved against the json's folder and {models}
@@ -64,6 +64,8 @@ $Encoder = Resolve-CfgPath $Cfg.paths.encoder $Models
 $VaeFull = Resolve-CfgPath $Cfg.paths.vae_full $Models
 $Taef1   = Resolve-CfgPath $Cfg.paths.taef1 $Models
 $Bin     = Resolve-CfgPath $Cfg.paths.bin $Models
+# 10-01: the NPU driver only loads from a plain-ASCII folder; zimage.py copies such a bin/ once to ProgramData
+if ($Bin -match '[^\x00-\x7F]') { $ab = & python (Join-Path $Root 'zimage.py') --ascii-bin 2>$null; if ($LASTEXITCODE -eq 0 -and $ab) { $Bin = "$ab".Trim() } }
 $Esrgan  = Resolve-CfgPath $Cfg.paths.esrgan_x4 $Models
 $Qsr     = if ($Cfg.paths.quicksrnet_x4) { Resolve-CfgPath $Cfg.paths.quicksrnet_x4 $Models } else { '' }   # 10-01: optional
 $UpEngine = if ($Upscaler) { $Upscaler } elseif ($Cfg.defaults.upscale_engine) { [string] $Cfg.defaults.upscale_engine } else { 'quicksrnet' }
