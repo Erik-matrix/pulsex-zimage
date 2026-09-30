@@ -24,6 +24,7 @@ param(
     [ValidateSet('', 'cpu', 'npu')] [string] $EncoderOn = '',
     [Alias('Up')] [switch] $Upscale,
     [Alias('NoUp')] [switch] $NoUpscale,
+    [ValidateSet('', 'quicksrnet', 'esrgan')] [string] $Upscaler = '',
     [switch] $Enrich,
     [string] $Title = '',
     [string] $Subtitle = '',
@@ -40,7 +41,7 @@ $ErrorActionPreference = 'Stop'
 $Root    = $PSScriptRoot
 # The window says PulseX; the command stays "zimage" (09-27).
 try { $Host.UI.RawUI.WindowTitle = 'PulseX' } catch {}
-$Version = '0.5'
+$Version = '0.6'
 
 # ---- configuration (zimage.json) -------------------------------------------------------------
 # Same rules as zimage.py: relative paths are resolved against the json's folder and {models}
@@ -64,6 +65,10 @@ $VaeFull = Resolve-CfgPath $Cfg.paths.vae_full $Models
 $Taef1   = Resolve-CfgPath $Cfg.paths.taef1 $Models
 $Bin     = Resolve-CfgPath $Cfg.paths.bin $Models
 $Esrgan  = Resolve-CfgPath $Cfg.paths.esrgan_x4 $Models
+$Qsr     = if ($Cfg.paths.quicksrnet_x4) { Resolve-CfgPath $Cfg.paths.quicksrnet_x4 $Models } else { '' }   # 10-01: optional
+$UpEngine = if ($Upscaler) { $Upscaler } elseif ($Cfg.defaults.upscale_engine) { [string] $Cfg.defaults.upscale_engine } else { 'quicksrnet' }
+if ($UpEngine -eq 'quicksrnet' -and -not ($Qsr -and (Test-Path $Qsr))) { $UpEngine = 'esrgan' }
+$UpName  = if ($UpEngine -eq 'quicksrnet') { 'QuickSRNet' } else { 'Real-ESRGAN' }
 $QnnRt   = Resolve-CfgPath $Cfg.paths.qnn_runtime $Models
 $Port    = [int] $Cfg.server.port
 $D       = $Cfg.defaults
@@ -104,8 +109,8 @@ function Show-Usage {
 
     W ''; W 'Which mode should I use?' Cyan
     Show-Rows @(
-        @('(default)',       '512, then Real-ESRGAN x4 -> 1024',               '~19 s'),
-        @('-NoUp',           'plain 512 - fastest, for trying prompts',         '~16 s'),
+        @('(default)',       "512, then $UpName x4 -> 1024",                   '~12 s'),
+        @('-NoUp',           'plain 512 - fastest, for trying prompts',         '~11 s'),
         @('-Size 1024',      'the real thing - most detail, for keepers',       '~46 s')) Green 16 48
     W '  Times are for "zimage make" (everything starts cold). In "zimage repl" everything' DarkGray
     W '  stays loaded: from the 2nd image on, 512 takes ~10 s and 512 + upscale ~12 s.' DarkGray
@@ -129,6 +134,7 @@ function Show-Usage {
         @('-Out <file>',        'exact file name (.jpg/.png); without it: next free', "zimage_NNNN.jpg"),
         @('-Size 512|1024|480p', 'resolution; 480p = 848 x 480 (wide, no upscaler)', "now $Size"),
         @('-NoUp',              'keep the plain 512 image (no x4 upscaler)',         $(if ($Upscale) { 'upscaler now on' } else { 'upscaler now off' })),
+        @('-Upscaler <name>',   'quicksrnet (fast, default) or esrgan (Real-ESRGAN)', "now $UpEngine"),
         @('-Seed <n>',          'another number = another image for the same text',  "now $Seed"),
         @('-Enrich',            'add material words (skin pores, wet sand ...)',     $(if ($D.enrich) { 'now on' } else { 'now off' })),
         @('-Quality <1-100>',   'JPEG quality',                                      "now $Quality")) Yellow 22 50
@@ -321,6 +327,7 @@ function Invoke-Engine([string[]] $engineArgs) {
 $common = @('--size', $Size, '--steps', $Steps, '--seed', $Seed, '-q', $Quality, '--upscale-to', $UpscaleTo)
 if ($PSBoundParameters.ContainsKey('Out')) { $common += @('-o', $Out) }
 if ($Upscale) { $common += '--upscale' } else { $common += '--no-upscale' }
+if ($Upscaler) { $common += @('--upscaler', $Upscaler) }
 if ($Enrich)  { $common += '--enrich' }
 $textArgs = @()
 if ($Title)    { $textArgs += @('--title', $Title) }
@@ -395,7 +402,8 @@ switch ($Command) {
         W ''
         W 'Files' Cyan
         foreach ($kv in @(@('image model', $Dit), @('text encoder', $Encoder), @('decoder taef1', $Taef1),
-                          @('decoder full', $VaeFull), @('upscaler x4', $Esrgan), @('QNN runtime', $QnnRt),
+                          @('decoder full', $VaeFull), @('upscaler QSR', $(if ($Qsr) { $Qsr } else { '(not set)' })),
+                          @('upscaler ESR', $Esrgan), @('QNN runtime', $QnnRt),
                           @('binaries', $Bin))) {
             W ('  {0,-15}' -f $kv[0]) Green -NoNL
             W $kv[1] -NoNL
@@ -408,11 +416,11 @@ switch ($Command) {
         W '  shortcut      ' Green -NoNL; W (Join-Path $env:USERPROFILE 'Pictures\zimage')
         W ''
         W 'Defaults (from the config file)' Cyan
-        W ("  size {0} | upscale {1} -> {2} | steps {3} | seed {4} | quality {5} | decoder {6} | encoder {7} | port {8}" -f `
-            $D.size, $(if ($D.upscale) { 'on' } else { 'off' }), $D.upscale_to, $D.steps, $D.seed, $D.quality, $D.vae, $EncoderOn, $Port)
+        W ("  size {0} | upscale {1} -> {2} ({9}) | steps {3} | seed {4} | quality {5} | decoder {6} | encoder {7} | port {8}" -f `
+            $D.size, $(if ($D.upscale) { 'on' } else { 'off' }), $D.upscale_to, $D.steps, $D.seed, $D.quality, $D.vae, $EncoderOn, $Port, $UpName)
         W ''
     }
-    'version' { W "PulseX $Version" White -NoNL; W '  (Z-Image-Turbo Q4_0 + Qwen3-4B Q4_0 + Real-ESRGAN x4, ggml-hexagon / HTP0)' DarkGray }
+    'version' { W "PulseX $Version" White -NoNL; W "  (Z-Image-Turbo Q4_0 + Qwen3-4B Q4_0 + $UpName x4, ggml-hexagon / HTP0)" DarkGray }
     { $_ -in 'help', '-h', '--help', '-?', '/?', '', $null } { Show-Usage }
     default {
         # "zimage \"a cat\"" without a verb should also work

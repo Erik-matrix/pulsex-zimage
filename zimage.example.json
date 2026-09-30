@@ -9,6 +9,7 @@
     "paths.taef1": "bin/taef1_decode.exe - the fast C++ VAE decoder (the default)",
     "paths.bin": "prebuilt binaries shipped in bin/ (llama-server, zimage-dit-stream, ggml, the DSP skel)",
     "paths.esrgan_x4": "Real-ESRGAN x4 QNN context wrapped as ONNX (for 512 + upscale)",
+    "paths.quicksrnet_x4": "QuickSRNet-Large w8a8 x4 ONNX (Qualcomm AI Hub) - the default upscaler; another input size is turned into a 512x512 copy next to it on first use (needs pip install onnx). Optional: without it, Real-ESRGAN",
     "paths.qnn_runtime": "QNN/QAIRT runtime folder with QnnHtp.dll (for the upscaler)",
     "defaults.size": "512 (default, with the x4 upscaler -> 1024), 1024, or a wide size: '480p' (= 848 x 480) or 'WxH' with both sides divisible by 16",
     "defaults.steps": "Z-Image-Turbo is distilled for 4",
@@ -23,6 +24,8 @@
     "defaults.purge_on_start": "REPL start: empty Windows' whole standby cache ('Cached') before the models load. standby | full (also trim every process's working set, like PulseCore Memory) | off. Only when PulseX runs as administrator; otherwise only PulseX's own model files are dropped.",
     "defaults.purge_on_exit": "the same on 'zimage stop' and when the REPL closes",
     "defaults.upscale_detail": "0..1, how much of the Real-ESRGAN result is kept; the rest is a plain Lanczos enlargement. 1 = sharpest (can look plastic), 0 = softest.",
+    "defaults.upscale_engine": "the x4 upscaler: quicksrnet (default, 0.06 s on the NPU) or esrgan (Real-ESRGAN, 1.1 s)",
+    "defaults.upscale_detail_quicksrnet": "the same mix for QuickSRNet; 0.6 matches ESRGAN 0.5's detail, 1.0 overshoots at fine bright lines",
     "defaults.pack_cache": "true: the image model's weights are stored once in the NPU's own tiled layout next to the model (.hexpack, 3.5 GB) and then just copied - no re-packing on every image",
     "defaults.npu_weight_budget_mb": "NPU memory for the image model's weights. 0 (default): they stream through two small slots (~0.2 GB) from the file cache - ~3 GB less committed memory, same image, same speed. -1: keep all 3.3 GB on the NPU"
   },
@@ -35,6 +38,7 @@
     "taef1": "bin/taef1_decode.exe",
     "bin": "bin",
     "esrgan_x4": "C:/PulseCore/models/sdxl-qnn/esrgan_x4.bin.wrap.onnx",
+    "quicksrnet_x4": "{models}/quicksrnetlarge.onnx",
     "qnn_runtime": "C:/PulseCore/tools/qnn/2.46-runtime"
   },
   "defaults": {
@@ -49,6 +53,8 @@
     "upscale": true,
     "upscale_to": 1024,
     "upscale_detail": 0.5,
+    "upscale_engine": "quicksrnet",
+    "upscale_detail_quicksrnet": 0.6,
     "enrich": false,
     "prompt_prefix": "",
     "unload_after_s": 60,

@@ -20,7 +20,8 @@ HERE = Path(__file__).resolve().parent
 _DEFAULTS = {"out": "zimage.jpg", "size": 512, "steps": 4, "shift": 1.0, "seed": 1234, "quality": 95,
              "vae": "taef1", "encoder": "npu", "upscale": True, "upscale_to": 1024, "enrich": False,
              "unload_after_s": 60, "purge_on_start": "standby", "purge_on_exit": "standby",
-             "upscale_detail": 0.5, "pack_cache": True, "npu_weight_budget_mb": 0}
+             "upscale_detail": 0.5, "pack_cache": True, "npu_weight_budget_mb": 0,
+             "upscale_engine": "quicksrnet", "upscale_detail_quicksrnet": 0.6}
 _PATH_KEYS = ("models", "dit", "encoder", "tokenizer", "vae_full", "taef1", "bin", "esrgan_x4", "qnn_runtime")
 
 
@@ -62,6 +63,7 @@ TOK    = PATHS["tokenizer"]
 VAE    = PATHS["vae_full"]
 TAEF1X = PATHS["taef1"]
 ESRGAN = PATHS["esrgan_x4"]
+QSR    = PATHS.get("quicksrnet_x4")          # 10-01: optional - without it the upscaler is ESRGAN
 QNN_RT = PATHS["qnn_runtime"]
 
 # Z-Image: VAE skalar 8x, patch 2, 16 latentkanaler, cap_feats ar 2560-dim.
@@ -241,7 +243,7 @@ def cap_feats(prompt, workdir, verbose):
         cmd += ["-ngl", "99", "--device", "HTP0"]
     else:
         cmd += ["-ngl", "0", "--device", "none", "--no-repack"]
-    r = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if r.returncode != 0:
         sys.exit("encodern misslyckades:\n" + r.stderr[-1500:])
     a = np.array(json.loads(r.stdout), dtype=np.float32)
@@ -353,7 +355,7 @@ def start_dit(workdir, steps, verbose):
            "GGML_HEXAGON_PD_DUMP": os.environ.get("GGML_HEXAGON_PD_DUMP", "1"), "ZI_STEPS": str(steps),
            **dit_weight_env()}
     p = subprocess.Popen([str(BIN / "zimage-dit-stream.exe"), str(DIT), str(workdir), "HTP0"],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", env=env)
     out, err, ready = [], [], threading.Event()
 
     # Bada roren maste tommas hela tiden: ett fullt stderr-ror blockerar motorn.
@@ -429,7 +431,7 @@ def taef1_decode(lat, tmp):
     # vikterna ligger i {models}/taef1/ (09-28: forut hardkodat i exe:n - fungerade bara har)
     env = dict(os.environ)
     env.setdefault("PULSE_TAEF1_WEIGHTS", str(MODELS / "taef1" / "diffusion_pytorch_model.safetensors"))
-    r = subprocess.run([str(TAEF1X), str(fi), str(fo), "--hw", "%dx%d" % (H, W)], capture_output=True, text=True, env=env)
+    r = subprocess.run([str(TAEF1X), str(fi), str(fo), "--hw", "%dx%d" % (H, W)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     if r.returncode != 0 or not fo.exists():
         raise RuntimeError("taef1_decode: rc=%d %s" % (r.returncode, r.stderr[-400:]))
     return np.fromfile(str(fo), dtype=np.uint8).reshape(H * VAEF, W * VAEF, 3)
@@ -530,7 +532,7 @@ class DitServer:
         self.p = subprocess.Popen(
             [str(BIN / "zimage-dit-stream.exe"), str(DIT), str(first_dir), "HTP0"],
             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-            text=True, env=env, bufsize=1)
+            text=True, encoding="utf-8", errors="replace", env=env, bufsize=1)
         self._wait()
 
     def _wait(self):
@@ -673,7 +675,130 @@ def _esrgan_open():
     return _ESR
 
 
+# 10-01: two x4 upscalers. quicksrnet (default) = QuickSRNet-Large w8a8, one pass, 0.06 s on the NPU; esrgan = the
+# Real-ESRGAN above (1.1 s). Same 512 images side by side (tools/sr_compare_1001.py): QuickSRNet mixed 0.6 with the
+# Lanczos has ESRGAN 0.5's detail (Laplace 547 vs 571, 231 vs 230), colour within 0.5 % (ESRGAN -1.5 % green/blue),
+# skin and beards less painted, a little more grain; pure QuickSRNet (1.0) overshoots at bright whiskers.
+UPSCALERS = {"quicksrnet": "QuickSRNet", "esrgan": "Real-ESRGAN"}
+UPSCALE_ENGINE = "esrgan"
+_QSR = None
+_QSR_NOTE = [False]
+
+
+def set_upscaler(name):
+    """Choose the engine; quicksrnet falls back to esrgan (with one notice) when paths.quicksrnet_x4 is missing."""
+    global UPSCALE_ENGINE
+    name = str(name).lower()
+    if name not in UPSCALERS:
+        raise ValueError("upscaler: quicksrnet or esrgan, not %r" % name)
+    if name == "quicksrnet" and not (QSR and QSR.exists()):
+        if not _QSR_NOTE[0]:
+            print("  " + C_DIM + "(QuickSRNet not found (paths.quicksrnet_x4) - upscaling with Real-ESRGAN)" + C_OFF, flush=True)
+            _QSR_NOTE[0] = True
+        name = "esrgan"
+    UPSCALE_ENGINE = name
+    return name
+
+
+def _qsr_model_512(p):
+    """The QuickSRNet ONNX with a 512 x 512 input. The net is conv-only, so another size is the same graph with other
+    I/O dims: made once next to it (needs the onnx package); a model that already is 512 x 512 is used as it is."""
+    try:
+        import onnx
+    except ImportError:
+        return p
+    m = onnx.load(str(p), load_external_data=False)
+    dims = [d.dim_value for d in m.graph.input[0].type.tensor_type.shape.dim]
+    if dims[2:] == [512, 512]:
+        return p
+    q = p.with_name("quicksrnetlarge_512x512.onnx")
+    if not q.exists():
+        m = onnx.load(str(p))
+        for io, (h, w) in ((m.graph.input[0], (512, 512)), (m.graph.output[0], (2048, 2048))):
+            d = io.type.tensor_type.shape.dim; d[2].dim_value = h; d[3].dim_value = w
+        del m.graph.value_info[:]                                # shapes re-inferred for the new size
+        onnx.save(onnx.shape_inference.infer_shapes(m), str(q))
+    return q
+
+
+def qsr_session():
+    """QuickSRNet-Large w8a8 via ONNX Runtime's QNN EP (uint8 in, uint8 out). The CPU EP may take the few
+    DequantizeLinear of CONSTANTS in these AI Hub graphs; all compute is one QNN node (as in ltx_video)."""
+    global _QSR
+    with _ESR_LOCK:
+        if _QSR is None:
+            import onnxruntime as ort
+            try:
+                ort.disable_telemetry_events()
+            except Exception:
+                pass
+            for d in (QNN_RT, Path(ort.__file__).parent / "capi"):
+                if d.is_dir():
+                    os.add_dll_directory(str(d))
+            # The ONNX is compiled for the NPU when a session opens - in the background, but at the same time as the
+            # DiT, which it slowed by ~0.6 s (measured 10-01: DiT 9.8-9.9 s vs 9.2 s beside ESRGAN's precompiled
+            # context). So the first session saves the compiled graph as an EP-context model next to the ONNX
+            # (<name>_ctx.onnx + its .bin) and every later one loads that, like ESRGAN's.
+            model = _qsr_model_512(QSR)
+            ctx = model.with_name(model.stem + "_ctx.onnx")
+            prov = ["QNNExecutionProvider", "CPUExecutionProvider"]
+            popt = [{"backend_path": str(QNN_RT / "QnnHtp.dll"), "htp_performance_mode": "burst"}, {}]
+            if ctx.exists():
+                try:
+                    _QSR = ort.InferenceSession(str(ctx), ort.SessionOptions(), providers=prov, provider_options=popt)
+                except Exception as e:           # a context from another QNN runtime / chip: compile instead
+                    print("  " + C_DIM + "(QuickSRNet context not usable (%s) - compiling)" % str(e)[:80] + C_OFF, flush=True)
+            if _QSR is None:
+                so = ort.SessionOptions()
+                if not ctx.exists():
+                    so.add_session_config_entry("ep.context_enable", "1")
+                    so.add_session_config_entry("ep.context_file_path", str(ctx))
+                    so.add_session_config_entry("ep.context_embed_mode", "0")
+                _QSR = ort.InferenceSession(str(model), so, providers=prov, provider_options=popt)
+        return _QSR
+
+
+def upscaler_ready():
+    return (_QSR if UPSCALE_ENGINE == "quicksrnet" else _ESR) is not None
+
+
+def upscaler_prewarm():
+    """Open the chosen upscaler's session in the background while the DiT runs."""
+    import threading
+    th = threading.Thread(target=qsr_session if UPSCALE_ENGINE == "quicksrnet" else esrgan_session, daemon=True)
+    th.start()
+    return th
+
+
+def upscaler_release():
+    """REPL: let go of both sessions after use (ESRGAN holds ~0.9 GB committed); reopened behind the next DiT."""
+    global _QSR
+    with _ESR_LOCK:
+        _QSR = None
+    esrgan_release()
+
+
 def upscale_x4(im, target):
+    """512 x 512 RGB (uint8) -> x4 (QuickSRNet or Real-ESRGAN, see UPSCALE_ENGINE) -> 2048 -> Lanczos -> target,
+    mixed with a plain Lanczos of the 512 (upscale_detail_quicksrnet / upscale_detail)."""
+    from PIL import Image
+    if im.shape[0] != 512 or im.shape[1] != 512:
+        raise ValueError("the x4 upscaler takes a 512 x 512 image, got %dx%d" % (im.shape[1], im.shape[0]))
+    if UPSCALE_ENGINE != "quicksrnet":
+        return upscale_x4_esrgan(im, target)
+    sess = qsr_session()
+    y = sess.run(None, {sess.get_inputs()[0].name: np.ascontiguousarray(im.transpose(2, 0, 1)[None])})[0]
+    img = Image.fromarray(np.ascontiguousarray(y[0].transpose(1, 2, 0)), "RGB")
+    if target != img.size[0]:
+        img = img.resize((target, target), Image.LANCZOS)
+    d = float(DEFAULTS.get("upscale_detail_quicksrnet", 0.6))
+    if d >= 1.0:
+        return np.asarray(img)
+    soft = np.asarray(Image.fromarray(im, "RGB").resize((target, target), Image.LANCZOS), dtype=np.float32)
+    return np.clip(np.rint(d * np.asarray(img, dtype=np.float32) + (1.0 - d) * soft), 0, 255).astype(np.uint8)
+
+
+def upscale_x4_esrgan(im, target):
     """512 x 512 RGB (uint8) -> Real-ESRGAN x4 -> 2048 -> Lanczos -> target. Measured 09-27:
     1.1 s on the NPU in burst mode, colours faithful (per-channel slope 0.998-1.010 vs Lanczos),
     more detail. A w8a16 build of the same net was SLOWER (1.33 s) and shifted blue by 2.4 %."""
@@ -842,20 +967,21 @@ def unload_models(dit):
     """ComfyUI-style unload between images: close the DiT server (its NPU buffers are ~4.9 GB
     COMMITTED), drop the ESRGAN session (~0.9 GB), then drop their file pages from Windows'
     standby cache. The next image reloads them. Returns (committed MB freed, cache MB dropped)."""
-    global _ESR
+    global _ESR, _QSR
     c0 = commit_mb()
     if dit is not None:
         dit.close()
     with _ESR_LOCK:
         _ESR = None
+        _QSR = None                                   # 10-01: the QuickSRNet session too
     import gc
     gc.collect()
     dropped = 0
     exe = HERE / "zimage.exe"
-    files = [str(DIT)] + [f for f in [str(ESRGAN).replace(".wrap.onnx", "")] if Path(f).exists()]
+    files = [str(DIT)] + [f for f in [str(ESRGAN).replace(".wrap.onnx", ""), str(QSR) if QSR else ""] if f and Path(f).exists()]
     if exe.exists():
         try:
-            r = subprocess.run([str(exe), "--drop-cache"] + files, capture_output=True, text=True, timeout=60)
+            r = subprocess.run([str(exe), "--drop-cache"] + files, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
             for l in r.stdout.split(chr(10)):
                 if l.startswith("dropped "):
                     dropped = int(l.split()[1])
@@ -970,8 +1096,9 @@ def serve(a, tmp):
     print("  " + D + "these stay in effect until you change them:" + O)
     print("    " + Y + "--size 512|1024|480p" + O + "  resolution, or just " + Y + "--512" + O + " / " + Y + "--1024"
           + O + " / " + Y + "--480p" + O + " (848 x 480, wide) (now " + size_str(a.size) + ")")
-    print("    " + Y + "--up" + O + " / " + Y + "--noup" + O + "     512 + Real-ESRGAN x4 -> " + str(a.upscale_to)
+    print("    " + Y + "--up" + O + " / " + Y + "--noup" + O + "     512 + x4 upscaler -> " + str(a.upscale_to)
           + " on/off (now " + ("on" if a.upscale else "off") + ")")
+    print("    " + Y + "--upscaler quicksrnet|esrgan" + O + "  which x4 upscaler (now " + UPSCALERS[UPSCALE_ENGINE] + ")")
     print("    " + Y + "--seed N" + O + "          start seed (each image adds 1)")
     print("    " + Y + "--enrich" + O + " / " + Y + "--noenrich" + O + " add material words (skin pores, wet sand ...) (now "
           + ("on" if a.enrich else "off") + ")")
@@ -1042,6 +1169,16 @@ def serve(a, tmp):
                     up = True; k += 1; continue
                 if w in ("--noup", "--no-upscale"):
                     up = False; k += 1; continue
+                if w == "--upscaler":                                     # 10-01: stays until changed
+                    try:
+                        was = UPSCALE_ENGINE
+                        now = set_upscaler(words[k + 1] if k + 1 < len(words) else "")
+                        if now != was:
+                            upscaler_release()
+                        print("  " + D + "upscaler: " + UPSCALERS[now] + O)
+                    except ValueError:
+                        print("  " + Y + "--upscaler" + O + " takes quicksrnet or esrgan - keeping " + UPSCALERS[UPSCALE_ENGINE] + ".")
+                    k += 2; continue
                 if w == "--title":
                     title, k = _take_text(words, k + 1); continue
                 if w in ("--sub", "--subtitle"):
@@ -1075,8 +1212,8 @@ def serve(a, tmp):
                 t = time.perf_counter(); cap = cap_feats(text, tmp, a.verbose)
                 st.done("encode the prompt  (Qwen3-4B, %s)" % ENC_ON, t)
                 su = build_inputs(cap, px, seed0 + n, tmp)
-                if do_up and _ESR is None:
-                    esrgan_prewarm()                          # sessionsstarten doljs bakom DiT:n
+                if do_up and not upscaler_ready():
+                    upscaler_prewarm()                        # sessionsstarten doljs bakom DiT:n
                 t = time.perf_counter()
                 if dit is None:
                     dit = DitServer(tmp, a.steps, a.verbose)      # forsta bilden gors av starten
@@ -1090,8 +1227,8 @@ def serve(a, tmp):
                 st.done("decode to pixels   (%s)" % VAE_NAME.get(a.vae, a.vae), t)
                 if do_up:
                     t = time.perf_counter(); im = upscale_x4(im, a.upscale_to)
-                    st.done("upscale x4         (Real-ESRGAN, NPU)", t, "512 -> 2048 -> %d" % a.upscale_to)
-                    esrgan_release()                          # ~0,9 GB tillbaka; ateroppnas bakom nasta DiT
+                    st.done("upscale x4         (%s, NPU)" % UPSCALERS[UPSCALE_ENGINE], t, "512 -> 2048 -> %d" % a.upscale_to)
+                    upscaler_release()                        # ESRGAN ~0,9 GB tillbaka; ateroppnas bakom nasta DiT
                 out = save_image(im, out, a.quality, title, subtitle, tpos)
                 print("  " + G + "saved" + O + " %s  (%d x %d, seed %d)  in %.1f s" % (out, im.shape[1], im.shape[0], seed0 + n,
                                                                                     time.perf_counter() - t_img))
@@ -1128,6 +1265,8 @@ def main():
     ap.add_argument("--upscale", action="store_true", default=bool(DEFAULTS["upscale"]),
                     help="at 512: Real-ESRGAN x4 afterwards")
     ap.add_argument("--no-upscale", dest="upscale", action="store_false", help="keep the 512 image as it is")
+    ap.add_argument("--upscaler", default=str(DEFAULTS.get("upscale_engine", "quicksrnet")), choices=tuple(UPSCALERS),
+                    help="the x4 upscaler: quicksrnet (default, 0.06 s) or esrgan (Real-ESRGAN, 1.1 s)")
     ap.add_argument("--enrich", dest="enrich", action="store_true", default=bool(DEFAULTS.get("enrich", False)),
                     help="add material words to the prompt (cues.json)")
     ap.add_argument("--no-enrich", dest="enrich", action="store_false", help=argparse.SUPPRESS)
@@ -1151,8 +1290,9 @@ def main():
     os.environ["ZI_VAE"] = a.vae
 
     need = [DIT, ENC, TOK, BIN, TAEF1X if a.vae == "taef1" else VAE]
+    set_upscaler(a.upscaler)
     if a.upscale:
-        need += [ESRGAN, QNN_RT]
+        need += [QSR if UPSCALE_ENGINE == "quicksrnet" else ESRGAN, QNN_RT]
     missing = [p for p in need if not p.exists()]
     if missing:
         sys.exit("PulseX: missing files (see %s):\n  %s" % (CONFIG_FILE, "\n  ".join(str(p) for p in missing)))
@@ -1176,7 +1316,7 @@ def main():
         release_encoder()
         su = build_inputs(cap, a.size, a.seed, tmp)
         if do_up:
-            esrgan_prewarm()          # ~1 s sessionsstart doljs bakom DiT:n
+            upscaler_prewarm()        # ~1 s sessionsstart doljs bakom DiT:n
         t = time.perf_counter(); lat, dit_finish = start_dit(tmp, a.steps, a.verbose)
         st.done("generate the image (Z-Image DiT, NPU)", t, "%d tokens, %d steps" % (su, a.steps))
         if not np.isfinite(lat).all():
@@ -1191,7 +1331,7 @@ def main():
         if do_up:
             # Efter dit_finish: motorns NPU-session ar stangd innan ESRGAN oppnar sin.
             t = time.perf_counter(); im = upscale_x4(im, a.upscale_to)
-            st.done("upscale x4         (Real-ESRGAN, NPU)", t, "512 -> 2048 -> %d" % a.upscale_to)
+            st.done("upscale x4         (%s, NPU)" % UPSCALERS[UPSCALE_ENGINE], t, "512 -> 2048 -> %d" % a.upscale_to)
         # Utan -Out: nasta lediga zimage_NNNN.jpg. Med -Out: exakt den filen (uttryckligt val).
         out = save_image(im, a.out if a.out_given else next_free(a.out), a.quality, a.title, a.subtitle, a.text_pos)
         print("  " + C_GREEN + "saved" + C_OFF + " %s  (%d x %d)  in %.1f s" % (out, im.shape[1], im.shape[0],

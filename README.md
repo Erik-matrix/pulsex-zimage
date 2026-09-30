@@ -12,9 +12,9 @@ fork of ggml-hexagon. The command is `zimage`; the window and the UI say PulseX.
 | Text encoder | Qwen3-4B, GGUF Q4_0 (`hidden_states[-2]`) | NPU, loaded for each prompt (default), or CPU |
 | Diffusion transformer | Z-Image-Turbo, GGUF Q4_0, 4 steps | NPU (HTP0) |
 | Decoder | taef1 (C++/NEON) or the full Flux VAE | CPU |
-| Upscaler (512 → 1024) | Real-ESRGAN x4, QNN context via ONNX Runtime | NPU |
+| Upscaler (512 → 1024) | QuickSRNet-Large x4 w8a8 (default) or Real-ESRGAN x4, via ONNX Runtime's QNN EP | NPU |
 
-Typical times on an X Plus: 512 + upscale ~19 s cold and 10–12 s in the REPL; wide 480p
+Typical times on an X Plus: 512 + upscale ~11.5 s (`zimage make`, everything cold; a plain 512 ~11 s); wide 480p
 (848 × 480) ~17 s cold and ~16 s in the REPL; native 1024 ~40 s.
 
 ## Examples
@@ -54,7 +54,8 @@ image.
 **Hardware.** Tested on Snapdragon X Plus (X1P42100, Hexagon NPU v73). Snapdragon X Elite and
 the other X1 chips have the same NPU and should work. Snapdragon X2 is untested: its NPU skel
 (`libggml-htp-v81.so`) is built and picked automatically, but the kernels were tuned on v73 and
-the Real-ESRGAN QNN context is compiled for X1 and has to be recompiled for X2.
+the optional Real-ESRGAN QNN context is compiled for X1 and has to be recompiled for X2 (QuickSRNet, the default
+upscaler, is compiled on your machine the first time it runs).
 
 **Requirements:** a Snapdragon X Plus laptop (Hexagon NPU v73; see Hardware) on Windows 11 ARM64, the
 [Microsoft Visual C++ Redistributable for ARM64](https://aka.ms/vs/17/release/vc_redist.arm64.exe)
@@ -81,7 +82,8 @@ zimage-dit-stream, zimage-encode, ggml, taef1_decode and the DSP skel `libggml-h
 | `qwen3-4b-zimage-q4_0.gguf` | the Qwen3-4B text encoder of Z-Image-Turbo, converted and quantized to Q4_0 with llama.cpp |
 | `taef1/diffusion_pytorch_model.safetensors` | madebyollin/taef1 |
 | `vae/ae.safetensors` | optional, the full Flux VAE (only for `-Vae full`) |
-| Real-ESRGAN x4 QNN context (`esrgan_x4.bin` + `.wrap.onnx`) | Qualcomm AI Hub, Real-ESRGAN-x4plus, compiled for the device |
+| `quicksrnetlarge.onnx` + `quicksrnetlarge.data` | Qualcomm AI Hub, QuickSRNetLarge, w8a8, ONNX — the default upscaler. The first image makes a 512 × 512 copy next to it (needs `pip install onnx`) and saves the compiled NPU graph (`_ctx.onnx`); after that it loads in a moment |
+| Real-ESRGAN x4 QNN context (`esrgan_x4.bin` + `.wrap.onnx`) | optional (`-Upscaler esrgan`): Qualcomm AI Hub, Real-ESRGAN-x4plus, compiled for the device |
 
 **Configure.** Copy `zimage.example.json` to `zimage.json` and set the paths (`zimage.json` is
 local and not checked in). `zimage config` lists every path with `[ok]` or `[MISSING]`.
@@ -242,8 +244,10 @@ Every key is documented in `zimage.example.json` (`_help`). Command-line options
 | Key | Default | Meaning |
 |---|---|---|
 | `defaults.size` | `512` | `512`, `1024`, `"480p"` (848 × 480), `"720p"` or `"WxH"` with both sides divisible by 16 |
-| `defaults.upscale` | `true` | 512 images go through Real-ESRGAN x4 to `upscale_to` |
-| `defaults.upscale_detail` | `0.5` | 0..1: share of the Real-ESRGAN result; the rest is a plain Lanczos enlargement. 1 is sharpest but can look plastic, 0 is softest. |
+| `defaults.upscale` | `true` | 512 images go through the x4 upscaler to `upscale_to` |
+| `defaults.upscale_engine` | `quicksrnet` | `quicksrnet` (0.06 s on the NPU) or `esrgan` (Real-ESRGAN, 1.1 s); `-Upscaler` / `--upscaler` for one run or, in the REPL, until changed. Without `paths.quicksrnet_x4` it is Real-ESRGAN |
+| `defaults.upscale_detail_quicksrnet` | `0.6` | 0..1: share of the QuickSRNet result, the rest a plain Lanczos enlargement. 0.6 has the detail of Real-ESRGAN at 0.5 with truer colour and less painted skin; 1.0 overshoots at fine bright lines |
+| `defaults.upscale_detail` | `0.5` | the same for Real-ESRGAN: 0..1 share of its result; the rest is a plain Lanczos enlargement. 1 is sharpest but can look plastic, 0 is softest. |
 | `defaults.shift` | `1.0` | sigma shift; 1.0 (linear [1, .75, .5, .25]) gave more skin and fur detail than 3.0 on every test prompt |
 | `defaults.encoder` | `npu` | `npu`: loaded on the NPU for each prompt and released right after; `cpu`: a warm server reading the weights from the file cache. See Memory |
 | `defaults.enrich` | `false` | material words on by default |
@@ -263,7 +267,7 @@ an X Plus (16 GB):
 | its graph buffers (512 / 480p / 1024) | 0.15 / 0.24 / 0.6 GB — only while an image is made; the REPL frees them between images |
 | Text encoder on the NPU (default) | 0.27 GB — its layers stream through two slots; ~1 s per prompt, then it exits |
 | Text encoder on the CPU (`-EncoderOn cpu`, `--no-repack`, mmap) | 0.5 GB, for the whole session |
-| Real-ESRGAN session | 0.9 GB — released after every upscale, reopened behind the next DiT run |
+| Upscaler session | QuickSRNet 0.1 GB (default), Real-ESRGAN 0.9 GB — released after every upscale, reopened behind the next DiT run |
 | taef1 decoder at 1024 | 0.8 GB, only while decoding |
 
 That is why nothing sits on the NPU that is not needed right now. The text encoder is a
@@ -333,6 +337,7 @@ The PulseX code in this repository is released under the [MIT License](LICENSE).
 
 The models are **not** included and keep their own licenses — check them before you use or
 share images commercially: Z-Image-Turbo (Tongyi-MAI), Qwen3-4B (Qwen), taef1 (madebyollin),
-the Flux VAE (Black Forest Labs) and Real-ESRGAN (Xintao Wang et al.). ggml-hexagon and
+the Flux VAE (Black Forest Labs), QuickSRNet (Qualcomm, BSD-3-Clause, AIMET model zoo) and Real-ESRGAN
+(Xintao Wang et al.). ggml-hexagon and
 llama.cpp are MIT-licensed; ONNX Runtime is MIT-licensed; the Qualcomm QNN/QAIRT runtime is
 under Qualcomm's own license.
