@@ -73,13 +73,21 @@ zimage-dit-stream, zimage-encode, ggml, taef1_decode and the DSP skel `libggml-h
 > self-signed NPU modules (a developer setup). On a stock machine the NPU part is refused; that
 > needs a Microsoft-attestation-signed skel, which this project does not have yet.
 
-**Models** (not included — see License). Put them on a fast SSD (an SD card made weight loading
-23× slower) in one folder:
+**Models** (not in this repository — see License). The two large ones are ready-made on Hugging Face,
+[Pexqman/Z-Image-Turbo-Q4_0-GGUF](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF):
+
+```
+hf download Pexqman/Z-Image-Turbo-Q4_0-GGUF z-image-turbo-q4_0.gguf qwen3-4b-zimage-q4_0.gguf --local-dir <models>
+```
+
+(`pip install huggingface_hub` gives the `hf` command; the links in the table work in a browser too.)
+Put everything on a fast SSD (an SD card made weight loading 23× slower) in one folder:
 
 | File | What / where from |
 |---|---|
-| `z-image-turbo-q4_0.gguf` | Tongyi-MAI/Z-Image-Turbo, converted with `tools/convert_zimage_to_gguf_q4.py` in the ggml-hexagon fork |
-| `qwen3-4b-zimage-q4_0.gguf` | the Qwen3-4B text encoder of Z-Image-Turbo, converted and quantized to Q4_0 with llama.cpp |
+| `z-image-turbo-q4_0.gguf` | [download](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF/resolve/main/z-image-turbo-q4_0.gguf) (3.2 GB) — Tongyi-MAI/Z-Image-Turbo, converted with `tools/convert_zimage_to_gguf_q4.py` in the ggml-hexagon fork |
+| `z-image-turbo-ultrareal06-q4_0.gguf` | optional, used instead of the file above: [download](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF/resolve/main/z-image-turbo-ultrareal06-q4_0.gguf) (3.2 GB) — the same model with the UltraReal LoRA merged in (see *A LoRA: UltraReal*) |
+| `qwen3-4b-zimage-q4_0.gguf` | [download](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF/resolve/main/qwen3-4b-zimage-q4_0.gguf) (2.2 GB) — the Qwen3-4B text encoder of Z-Image-Turbo, converted and quantized to Q4_0 with llama.cpp |
 | `taef1/diffusion_pytorch_model.safetensors` | madebyollin/taef1 |
 | `vae/ae.safetensors` | optional, the full Flux VAE (only for `-Vae full`) |
 | `quicksrnetlarge.onnx` + `quicksrnetlarge.data` | Qualcomm AI Hub, QuickSRNetLarge, w8a8, ONNX — the default upscaler. The first image makes a 512 × 512 copy next to it (needs `pip install onnx`) and saves the compiled NPU graph (`_ctx.onnx`); after that it loads in a moment |
@@ -225,7 +233,10 @@ experimental, with `-Tail N`).
 
 [Lenovo UltraReal](https://huggingface.co/Danrisi/Lenovo_UltraReal_Z_Image) (Apache-2.0) gives Z-Image-Turbo the
 look of a real camera: fur, skin, hands and lens blur like a photograph instead of a smooth rendering. The NPU
-engine has no LoRA at run time, so the LoRA is baked into the model once:
+engine has no LoRA at run time, so the LoRA is baked into the model once.
+
+**The finished file** (strength 0.6) is `z-image-turbo-ultrareal06-q4_0.gguf` in the
+[Hugging Face repository](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF): download it and go straight to step 3. To build it yourself, or at another strength:
 
 1. Download the original transformer of [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
    (the `transformer/` folder, about 24.6 GB) and the LoRA (`lenovo_z.safetensors`).
@@ -341,9 +352,10 @@ cache.
 
 The PulseX code in this repository is released under the [MIT License](LICENSE).
 
-The models are **not** included and keep their own licenses — check them before you use or
+The models are **not** in this repository and keep their own licenses — check them before you use or
 share images commercially: Z-Image-Turbo (Tongyi-MAI), Qwen3-4B (Qwen), taef1 (madebyollin),
 the Flux VAE (Black Forest Labs), QuickSRNet (Qualcomm, BSD-3-Clause, AIMET model zoo) and Real-ESRGAN
-(Xintao Wang et al.). ggml-hexagon and
+(Xintao Wang et al.). The Q4_0 files on Hugging Face are shared under Apache 2.0, the license of
+Z-Image-Turbo, Qwen3-4B and the UltraReal LoRA. ggml-hexagon and
 llama.cpp are MIT-licensed; ONNX Runtime is MIT-licensed; the Qualcomm QNN/QAIRT runtime is
 under Qualcomm's own license.
