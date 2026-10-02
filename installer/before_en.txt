@@ -1,0 +1,19 @@
+﻿PulseX Z-Image makes pictures from a description, on the NPU of a Snapdragon X laptop. Nothing leaves the computer.
+
+What you need
+  - A laptop with a Snapdragon X processor (X Plus or X Elite) and Windows 11.
+  - About 12 GB of free disk space.
+  - An internet connection during the installation: the picture model (5.8 GB) is downloaded from Hugging Face.
+    Depending on your connection this takes from a few minutes to an hour.
+
+Good to know
+  - The first picture takes a little longer than the following ones: the model is prepared for the NPU once.
+  - The NPU module of PulseX is not yet signed by Microsoft. On a computer that has not been set up to accept
+    self-signed NPU modules, Windows refuses it and no picture can be made. A signed module does not exist yet.
+  - Your pictures are saved in Pictures\PulseX Z-Image. Uninstalling removes the program and the model, never
+    your pictures.
+
+The picture model is Z-Image-Turbo (Tongyi-MAI, Apache 2.0) with the UltraReal LoRA (Danrisi, Apache 2.0) merged in,
+its text encoder Qwen3-4B (Apache 2.0), and the decoder taef1 (madebyollin, MIT). Enlarging uses QuickSRNet-Large
+(Qualcomm, BSD-3-Clause) and five files of Qualcomm's AI runtime, which are Qualcomm's and come with the program
+under Qualcomm's own license (see the qnn folder after the installation).

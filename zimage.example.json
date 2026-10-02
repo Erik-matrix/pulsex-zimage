@@ -27,7 +27,8 @@
     "defaults.upscale_engine": "the x4 upscaler: quicksrnet (default, 0.06 s on the NPU) or esrgan (Real-ESRGAN, 1.1 s)",
     "defaults.upscale_detail_quicksrnet": "the same mix for QuickSRNet; 0.6 matches ESRGAN 0.5's detail, 1.0 overshoots at fine bright lines",
     "defaults.pack_cache": "true: the image model's weights are stored once in the NPU's own tiled layout next to the model (.hexpack, 3.5 GB) and then just copied - no re-packing on every image",
-    "defaults.npu_weight_budget_mb": "NPU memory for the image model's weights. 0 (default): they stream through two small slots (~0.2 GB) from the file cache - ~3 GB less committed memory, same image, same speed. -1: keep all 3.3 GB on the NPU"
+    "defaults.npu_weight_budget_mb": "NPU memory for the image model's weights. 0 (default): they stream through two small slots (~0.2 GB) from the file cache - ~3 GB less committed memory, same image, same speed. -1: keep all 3.3 GB on the NPU",
+    "paths.cues": "the word list for Swedish words and material words as a table (cues.tsv, made from cues.json) - read by zimage-make.exe and the window (PulseX Z-Image); zimage.py reads cues.json itself"
   },
   "paths": {
     "models": "C:/PulseCore/models/zImage",
@@ -39,7 +40,8 @@
     "bin": "bin",
     "esrgan_x4": "C:/PulseCore/models/sdxl-qnn/esrgan_x4.bin.wrap.onnx",
     "quicksrnet_x4": "{models}/quicksrnetlarge.onnx",
-    "qnn_runtime": "C:/PulseCore/tools/qnn/2.46-runtime"
+    "qnn_runtime": "C:/PulseCore/tools/qnn/2.46-runtime",
+    "cues": "cues.tsv"
   },
   "defaults": {
     "out": "zimage.jpg",

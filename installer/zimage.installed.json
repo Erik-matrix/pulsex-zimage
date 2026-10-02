@@ -1,0 +1,20 @@
+{
+  "_about": "PulseX Z-Image as installed. Read by the window (bin/pulsex-zimage.exe) and by bin/zimage-make.exe. A relative path starts at this file's folder; the word models in braces stands for paths.models. To keep the models somewhere else, change paths.models.",
+  "paths": {
+    "models": "models",
+    "dit": "{models}/z-image-turbo-ultrareal06-q4_0.gguf",
+    "encoder": "{models}/qwen3-4b-zimage-q4_0.gguf",
+    "taef1": "bin/taef1_decode.exe",
+    "bin": "bin",
+    "quicksrnet_x4": "upscaler/quicksrnetlarge_512x512.onnx",
+    "qnn_runtime": "qnn",
+    "cues": "cues.tsv"
+  },
+  "defaults": {
+    "steps": 4,
+    "shift": 1.0,
+    "pack_cache": true,
+    "npu_weight_budget_mb": 0,
+    "prompt_prefix": "l3n0v0, "
+  }
+}

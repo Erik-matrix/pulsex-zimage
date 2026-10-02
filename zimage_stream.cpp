@@ -1576,6 +1576,7 @@ int main(int argc, char ** argv) {
         for (size_t i = 0; i < xlat.size(); i++) { xlat[i] += ds * (-latent_out[i]); s2 += (double) xlat[i] * xlat[i]; }
         printf("[resident] steg %d/%d  t_norm=%.3f  d_sigma=%+.4f  |x|=%.1f std=%.3f\n",
                step + 1, n_steps, 1.0f - sig[step], ds, sqrt(s2), sqrt(s2 / xlat.size()));
+        fflush(stdout);       // 10-02: a window shows the steps as they come (stdout is a pipe = fully buffered)
     }
     g_ph.lap("steg: schemauppdatering");
     }  // ---- slut pa residens-loopen ----

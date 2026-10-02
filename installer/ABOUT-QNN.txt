@@ -1,0 +1,13 @@
+QnnHtp.dll, QnnSystem.dll, QnnHtpV73Stub.dll, libQnnHtpV73Skel.so and libqnnhtpv73.cat in this folder are part of the
+Qualcomm AI Runtime (QAIRT / Qualcomm AI Engine Direct), version 2.46.0. Copyright (c) Qualcomm Technologies, Inc.
+All rights reserved. The first three run on the processor, the .so runs on the NPU, the .cat is its signature.
+
+They are not part of PulseX and not covered by its MIT license. They are included with PulseX Z-Image, unchanged and in
+object code form, because the program uses them to run its upscaler (the 2x / 4x enlarging) on the NPU. Their use is
+governed by Qualcomm's AI Stack License, the license of the QAIRT SDK they come from; that license allows distributing
+them as part of an application, not on their own. Do not redistribute these files separately, and do not reverse
+engineer them.
+
+The QAIRT SDK, with its license and its third-party notices, is available from Qualcomm.
+
+PulseX is an independent project and is not affiliated with or endorsed by Qualcomm.

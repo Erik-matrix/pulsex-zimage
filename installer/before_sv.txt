@@ -1,0 +1,19 @@
+﻿PulseX Z-Image gör bilder av en beskrivning, på NPU:n i en bärbar dator med Snapdragon X. Ingenting lämnar datorn.
+
+Det här behövs
+  - En bärbar dator med Snapdragon X-processor (X Plus eller X Elite) och Windows 11.
+  - Ungefär 12 GB ledigt diskutrymme.
+  - Internet under installationen: bildmodellen (5,8 GB) hämtas från Hugging Face.
+    Beroende på anslutningen tar det från några minuter till en timme.
+
+Bra att veta
+  - Den första bilden tar lite längre än de följande: modellen förbereds för NPU:n en gång.
+  - PulseX NPU-modul är ännu inte signerad av Microsoft. På en dator som inte är inställd för att godta
+    självsignerade NPU-moduler vägrar Windows den, och då kan ingen bild göras. En signerad modul finns inte än.
+  - Dina bilder sparas i Bilder\PulseX Z-Image. Avinstallationen tar bort programmet och modellen, aldrig
+    dina bilder.
+
+Bildmodellen är Z-Image-Turbo (Tongyi-MAI, Apache 2.0) med UltraReal-LoRA:n (Danrisi, Apache 2.0) inbakad,
+dess textkodare Qwen3-4B (Apache 2.0) och avkodaren taef1 (madebyollin, MIT). Förstoringen använder QuickSRNet-Large
+(Qualcomm, BSD-3-Clause) och fem filer ur Qualcomms AI-runtime, som är Qualcomms och följer med programmet under
+Qualcomms egen licens (se mappen qnn efter installationen).

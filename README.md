@@ -49,6 +49,60 @@ the LoRA's trigger word is added by itself:
 The NPU is not bit-deterministic, so the same command gives a nearly — not exactly — identical
 image.
 
+## Install
+
+The easy way is the setup file from the [latest release](https://github.com/Erik-matrix/pulsex-zimage/releases/latest),
+`PulseX-Z-Image-Setup-<version>.exe`: next, next, and the window (see below) is in the Start menu with its picture
+model. No Python, no command line.
+
+- It installs for you alone, without administrator rights, and it **downloads the picture model while it installs**
+  (5.8 GB from [Hugging Face](https://huggingface.co/Pexqman/Z-Image-Turbo-Q4_0-GGUF), every file checked against its
+  SHA-256). Have about 12 GB free. "The program only" skips the download - then put the three model files in the
+  program folder's `models\` yourself.
+- The first picture takes longer than the following ones: the model is prepared for the NPU once.
+- The setup file is not code-signed, so Windows SmartScreen asks first: *More info* › *Run anyway*.
+- The same limit as everywhere in PulseX applies: the NPU module is self-signed (see *Setup*), so the installed
+  program makes pictures only on a computer that accepts self-signed NPU modules.
+- The enlarging (2×, 4×) comes with it: the setup file carries QuickSRNet-Large as a compiled NPU graph (Qualcomm,
+  BSD-3-Clause) and five files of Qualcomm's AI runtime 2.46, which are Qualcomm's and are distributed as part of
+  the program under Qualcomm's own license (`qnn\ABOUT-QNN.txt`). Neither is in this repository. The graph is
+  compiled on a Snapdragon X Plus (X1P-42-100); where it does not run, the picture is saved at its own size.
+- Uninstalling removes the program and the model; your pictures (`Pictures\PulseX Z-Image`) stay.
+
+The setup is made with [Inno Setup](https://jrsoftware.org/isinfo.php) from `installer/pulsex_zimage.iss`:
+`ISCC.exe installer\pulsex_zimage.iss` in a clone writes it to `installer\output\` - without the enlarging, unless
+the build names what the repository does not hold: `/DQnn=<folder with QnnHtp.dll, QnnSystem.dll, QnnHtpV73Stub.dll>`,
+`/DQnnSkel=<folder with libQnnHtpV73Skel.so and libqnnhtpv73.cat>` (all of QAIRT 2.46) and
+`/DUpscaler=<quicksrnetlarge_512x512_ctx_qnn.bin>`.
+
+## The window: PulseX Z-Image
+
+`bin\pulsex-zimage.exe` is the same thing as a window, for people who do not want a command line: describe the
+picture, choose a shape, press **Create picture**. It needs no Python - it runs `bin\zimage-make.exe`, the whole
+chain (text encoder, diffusion transformer, decoder, upscaler, text on the picture) as one C++ program, and reads the
+same `zimage.json` (beside the program, or one folder up as in this repository).
+
+![PulseX Z-Image](docs/window.png)
+
+- **Shapes**: square 512 × 512 (about 11 s), portrait 512 × 768 and landscape 768 × 512 (14 s), wide 912 × 512
+  (17 s), large square 1024 × 1024 (40 s). The finished picture can be enlarged 2× or 4× (under a second more).
+- **Text on the picture**: a title and a smaller line, written on the finished picture - spelled as typed. *Add the
+  text* writes it on a picture that already exists; *Enlarge 2×* enlarges one.
+- **Swedish words** ("renarna vandrar över höstfjället", "en älg i en snöig granskog") get their English word added,
+  from the word list `cues.tsv` - the table form of `cues.json`, named in `zimage.json` as `paths.cues`. The check box
+  is under *More settings*, with the variation number, the number of steps and PNG instead of JPEG.
+- Pictures are saved in `Pictures\PulseX Z-Image`, never overwritten; every picture remembers its description.
+- English, with Swedish behind the button in the title bar.
+
+Three things to know. The same variation number gives **another picture** than `zimage make -Seed` (the window draws
+its start noise from another generator); with the same noise the two chains make the same pixels. And enlarging needs
+the upscaler's compiled context beside the QuickSRNet model (`…_ctx_qnn.bin`) - `zimage make` creates it the first
+time it upscales. And the window wants PulseX in a folder whose path is plain A-Z (see *Folder names*): `zimage make` copies
+its runtime to `ProgramData` when it is not, the window says so and stops.
+
+On the command line the same program is `bin\zimage-make.exe "a red fox in the snow" --up 1024 --out fox.jpg`
+(`--size WxH`, `--seed`, `--steps`, `--enrich nouns|full`, `--title`, `--sub`, `--top`).
+
 ## Setup
 
 **Hardware.** Tested on Snapdragon X Plus (X1P42100, Hexagon NPU v73). Snapdragon X Elite and
@@ -271,6 +325,7 @@ Every key is documented in `zimage.example.json` (`_help`). Command-line options
 | `defaults.shift` | `1.0` | sigma shift; 1.0 (linear [1, .75, .5, .25]) gave more skin and fur detail than 3.0 on every test prompt |
 | `defaults.encoder` | `npu` | `npu`: loaded on the NPU for each prompt and released right after; `cpu`: a warm server reading the weights from the file cache. See Memory |
 | `defaults.enrich` | `false` | material words on by default |
+| `paths.cues` | `cues.tsv` | the word list (Swedish words, material words) as a table, for the window and `zimage-make.exe`; `zimage.py` reads `cues.json` |
 | `defaults.unload_after_s` | `60` | REPL: unload the image model after this many idle seconds (0 = never) |
 | `defaults.npu_weight_budget_mb` | `0` | NPU memory for the image model's weights: `0` streams them through two slots (~0.2 GB), `-1` keeps all 3.3 GB on the NPU. See Memory |
 | `defaults.pack_cache` | `true` | store the weights once in the NPU's own tiled layout next to the model (`.hexpack`, 3.5 GB) and just copy them from then on |
@@ -346,6 +401,10 @@ cache.
 | `zimage_encode.cpp`, `zimage_encode_stream.h` | `zimage-encode.exe`, the text encoder as a short-lived NPU process (same build); the header streams its layers through two slots |
 | `zimage_launch.c`, `zimage.rc`, `zimage.ico`, `bld_cli.bat` | the `zimage.exe` launcher (also `--drop-cache` and `--purge`) |
 | `enrich.py`, `cues.json` | prompt enrichment |
+| `cues.tsv` | the same word list as a table, for `zimage-make.exe` and the window (`paths.cues`); made from `cues.json` |
+| `zimage_make.cpp` | `zimage-make.exe`, the whole chain without Python - what the window runs |
+| `installer/` | the setup file's script (Inno Setup), the `zimage.json` it installs and the text of its first page |
+| `window/` | the window (`flux_gui.cpp`, built with `PULSEX_ZIMAGE`) and the headers it shares with PulseX Image; `bin\pulsex-zimage.exe` |
 | `build_lora_from_fp32.py` | bakes a LoRA into the Q4_0 model from the original weights (see *A LoRA*); `merge_lora_q4.py` = the route that does not work, kept for reference |
 | `zimage.example.json` | configuration template |
 | `tools/` | measurement and diagnostic scripts (memory sampler, profilers, probes) |

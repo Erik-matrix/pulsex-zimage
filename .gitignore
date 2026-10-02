@@ -33,7 +33,11 @@ tools/cdsptrace/build.log
 !docs/examples/*.jpg
 !docs/*.png
 
+# the built setup file (a release asset, not a source file)
+installer/output/
+
 # prebuilt binaries are part of the release repository
 !zimage.exe
 !bin/*.exe
 !bin/*.dll
+!bin/*.ico
