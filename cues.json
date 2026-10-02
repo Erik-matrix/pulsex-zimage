@@ -2329,6 +2329,114 @@
    "thick winter coats, antlers, breath vapour, trampled snow"
   ],
   [
+   "renarna",
+   "thick winter coat, antlers, breath vapour"
+  ],
+  [
+   "renhjorden",
+   "thick winter coats, antlers, breath vapour, trampled snow"
+  ],
+  [
+   "renhjordar",
+   "thick winter coats, antlers, breath vapour, trampled snow"
+  ],
+  [
+   "rentjur",
+   "pale neck mane, wide branching antlers"
+  ],
+  [
+   "rentjuren",
+   "pale neck mane, wide branching antlers"
+  ],
+  [
+   "sarv",
+   "pale neck mane, wide branching antlers"
+  ],
+  [
+   "sarven",
+   "pale neck mane, wide branching antlers"
+  ],
+  [
+   "vaja",
+   "slender antlers, pale winter coat"
+  ],
+  [
+   "vajan",
+   "slender antlers, pale winter coat"
+  ],
+  [
+   "renkalv",
+   "soft brown coat, long legs"
+  ],
+  [
+   "renkalven",
+   "soft brown coat, long legs"
+  ],
+  [
+   "renkalvar",
+   "soft brown coats, long legs"
+  ],
+  [
+   "renbete",
+   "muzzles down in the snow, pawed-up lichen"
+  ],
+  [
+   "renlav",
+   "pale grey-green lichen carpet"
+  ],
+  [
+   "renskötare",
+   "traditional blue and red gákti, lasso over the shoulder"
+  ],
+  [
+   "renskötaren",
+   "traditional blue and red gákti, lasso over the shoulder"
+  ],
+  [
+   "renskiljning",
+   "milling herd, trampled snow, breath vapour"
+  ],
+  [
+   "renskiljningen",
+   "milling herd, trampled snow, breath vapour"
+  ],
+  [
+   "höstfjäll",
+   "red and orange dwarf birch, low heath, bare ridges"
+  ],
+  [
+   "höstfjället",
+   "red and orange dwarf birch, low heath, bare ridges"
+  ],
+  [
+   "fjällhed",
+   "low red and orange shrubs, lichen, scattered stones"
+  ],
+  [
+   "fjällheden",
+   "low red and orange shrubs, lichen, scattered stones"
+  ],
+  [
+   "vinterskog",
+   "snow-laden branches, muffled light"
+  ],
+  [
+   "vinterskogen",
+   "snow-laden branches, muffled light"
+  ],
+  [
+   "skogsväg",
+   "tyre tracks, trees closing in on both sides"
+  ],
+  [
+   "skogsvägen",
+   "tyre tracks, trees closing in on both sides"
+  ],
+  [
+   "solnedgången",
+   "low orange sun, long shadows, glowing horizon"
+  ],
+  [
    "räv",
    "dense red fur, bushy white-tipped tail"
   ],
@@ -2852,6 +2960,33 @@
   "renar": "reindeer",
   "renen": "reindeer",
   "renhjord": "reindeer herd",
+  "renarna": "reindeer",
+  "renhjorden": "reindeer herd",
+  "renhjordar": "reindeer herd",
+  "rentjur": "reindeer bull with large antlers",
+  "rentjuren": "reindeer bull with large antlers",
+  "sarv": "reindeer bull with large antlers",
+  "sarven": "reindeer bull with large antlers",
+  "vaja": "female reindeer",
+  "vajan": "female reindeer",
+  "renkalv": "reindeer calf",
+  "renkalven": "reindeer calf",
+  "renkalvar": "reindeer calves",
+  "renbete": "grazing reindeer",
+  "renlav": "reindeer lichen",
+  "renskötare": "Sami reindeer herder",
+  "renskötaren": "Sami reindeer herder",
+  "renskiljning": "reindeer roundup in a wooden corral",
+  "renskiljningen": "reindeer roundup in a wooden corral",
+  "höstfjäll": "autumn mountain tundra",
+  "höstfjället": "autumn mountain tundra",
+  "fjällhed": "mountain heath",
+  "fjällheden": "mountain heath",
+  "vinterskog": "winter forest",
+  "vinterskogen": "winter forest",
+  "skogsväg": "forest road",
+  "skogsvägen": "forest road",
+  "solnedgången": "sunset",
   "räv": "red fox",
   "räven": "red fox",
   "varg": "grey wolf",
@@ -2896,5 +3031,64 @@
   "spetsduk": "a lace tablecloth",
   "semla": "semla cream bun",
   "semlor": "semla cream buns"
+ },
+ "ambiguous": {
+  "ren": {
+   "after": [
+    "i",
+    "på",
+    "vid",
+    "under",
+    "över",
+    "framför",
+    "bakom",
+    "bland",
+    "mellan",
+    "med",
+    "utan",
+    "som",
+    "och",
+    "eller",
+    "från",
+    "till",
+    "mot",
+    "genom",
+    "längs",
+    "nära",
+    "intill",
+    "bredvid",
+    "ovanför",
+    "nedanför",
+    "står",
+    "stående",
+    "går",
+    "gående",
+    "springer",
+    "springande",
+    "betar",
+    "betande",
+    "ligger",
+    "liggande",
+    "tittar",
+    "vandrar",
+    "dricker",
+    "äter",
+    "ser"
+   ],
+   "not_before": [
+    "är",
+    "var",
+    "blev",
+    "blir",
+    "helt",
+    "mycket",
+    "väldigt",
+    "riktigt",
+    "så",
+    "lika",
+    "alldeles",
+    "inte"
+   ]
+  }
  }
 }

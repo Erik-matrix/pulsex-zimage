@@ -23,7 +23,20 @@ def _table():
     return _T
 
 
-def _hasword(low, w):
+def _word_at(low, i, step):
+    """the word that begins at / ends before position i (step +1 / -1), after spaces; '' at a punctuation mark or the end"""
+    while 0 <= i < len(low) and low[i] == " ":
+        i += step
+    j = i
+    while 0 <= j < len(low) and (low[j].isalpha() or low[j] in "_'"):
+        j += step
+    return low[i:j] if step > 0 else low[j + 1:i + 1]
+
+
+def _hasword(low, w, guard=None):
+    """`guard` (cues.json "ambiguous"): the word only counts where it stands as a noun - followed by the end, a
+    punctuation mark or one of guard["after"], and not preceded by one of guard["not_before"] ("ren skjorta",
+    "skjortan är ren" are not reindeer)."""
     p = low.find(w)
     while p != -1:
         if not (p and (low[p - 1].isalpha() or low[p - 1] == "_")):
@@ -31,7 +44,11 @@ def _hasword(low, w):
             if e < len(low) and low[e] == "s":
                 e += 1
             if e >= len(low) or not low[e].isalpha():
-                return True
+                if guard is None:
+                    return True
+                nxt, prv = _word_at(low, e, 1), _word_at(low, p - 1, -1)
+                if (nxt == "" or nxt in guard.get("after", ())) and prv not in guard.get("not_before", ()):
+                    return True
         p = low.find(w, p + 1)
     return False
 
@@ -71,12 +88,13 @@ def enrich(raw, table=None):
     `table`: another cue table with the same keys as cues.json (ltx_video merges in its video cues); default cues.json."""
     t = table if table is not None else _table()
     low = raw.lower()
+    amb = t.get("ambiguous", {})               # words that are only sometimes the thing ("ren": reindeer / clean)
     hit = []
     for k, add in t["front"]:
-        if _hasword(low, k):
+        if _hasword(low, k, amb.get(k)):
             hit.append((len(k) + 1000, add))
     for k, add in t["cues"]:
-        if _hasword(low, k):
+        if _hasword(low, k, amb.get(k)):
             hit.append((len(k), add))
     for w in t["photo_words"]:
         if _hasword(low, w):
@@ -93,7 +111,7 @@ def enrich(raw, table=None):
     # first, and putting "princess cake" before "cafe" turned a café into a cake still life.
     matched = []
     for k in sorted(t.get("nouns", {}), key=len, reverse=True):
-        if _hasword(low, k) and not any(k in m for m in matched):
+        if _hasword(low, k, amb.get(k)) and not any(k in m for m in matched):
             matched.append(k)
     for k in sorted(matched, key=lambda m: low.find(m)):
         noun = t["nouns"][k]

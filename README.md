@@ -137,9 +137,12 @@ It adds detail but can change the composition.
 "en älg i en snöig granskog under norrskenet" gave a snowy forest without the moose or the
 aurora. With `-Enrich` / `--enrich`, known Swedish words also add the English noun, first, before the
 material words — then the moose and the aurora appear. The table covers the north (`älg`,
-`norrsken`, `granskog`, `snöig`, `stuga`, `fors`/`forsarna`, `midnattssol`, `Kalixälven` …),
+`norrsken`, `granskog`, `snöig`, `stuga`, `fors`/`forsarna`, `midnattssol`, `Kalixälven`, reindeer:
+`ren`, `renar`, `renarna`, `renhjord`, `rentjur`, `vaja`, `renkalv`, `höstfjäll`, `fjällhed` …),
 cafés (`kafé`, `fika`, `ljusslinga`, `pappersstjärna` …), people, sea and town, with common
-inflections. English prompts remain the most reliable.
+inflections. A word that is only sometimes the thing is told apart by its neighbours: `ren` is a
+reindeer in "en ren i snön" and left alone in "en ren skjorta" (clean). English prompts remain the
+most reliable.
 
 The café words cover all three kinds of café: the old timber house (`kakelugn`, `förstukvist`,
 `spetsgardin`, `emaljskylt`, `julstjärna`, `thonetstol`, `blommig tapet`, `vaxduk` …), the

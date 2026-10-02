@@ -128,6 +128,37 @@ NEW = {
     "renar": ("reindeer", "thick winter coat, antlers, breath vapour"),
     "renen": ("reindeer", "thick winter coat, antlers, breath vapour"),
     "renhjord": ("reindeer herd", "thick winter coats, antlers, breath vapour, trampled snow"),
+    # 10-02 ("Sedan har jag helt glomt bort renar/caribou i norrlandstemat" + tre foton: ren pa hostfjall,
+    # hjord pa snoig skogsvag, tva betande renar i solnedgang). Matt i FLUX (flux_dit/tools/reindeer_check_1002.py):
+    # utan det engelska ordet blev "en ren pa kalfjallet" ett FAR, "en renhjord pa en skogsvag" en TOM vag och
+    # "renarna vandrar" VANDRARE - formerna nedan saknades.
+    "renarna": ("reindeer", "thick winter coat, antlers, breath vapour"),
+    "renhjorden": ("reindeer herd", "thick winter coats, antlers, breath vapour, trampled snow"),
+    "renhjordar": ("reindeer herd", "thick winter coats, antlers, breath vapour, trampled snow"),
+    "rentjur": ("reindeer bull with large antlers", "pale neck mane, wide branching antlers"),
+    "rentjuren": ("reindeer bull with large antlers", "pale neck mane, wide branching antlers"),
+    "sarv": ("reindeer bull with large antlers", "pale neck mane, wide branching antlers"),
+    "sarven": ("reindeer bull with large antlers", "pale neck mane, wide branching antlers"),
+    "vaja": ("female reindeer", "slender antlers, pale winter coat"),
+    "vajan": ("female reindeer", "slender antlers, pale winter coat"),
+    "renkalv": ("reindeer calf", "soft brown coat, long legs"),
+    "renkalven": ("reindeer calf", "soft brown coat, long legs"),
+    "renkalvar": ("reindeer calves", "soft brown coats, long legs"),
+    "renbete": ("grazing reindeer", "muzzles down in the snow, pawed-up lichen"),
+    "renlav": ("reindeer lichen", "pale grey-green lichen carpet"),
+    "renskötare": ("Sami reindeer herder", "traditional blue and red gákti, lasso over the shoulder"),
+    "renskötaren": ("Sami reindeer herder", "traditional blue and red gákti, lasso over the shoulder"),
+    "renskiljning": ("reindeer roundup in a wooden corral", "milling herd, trampled snow, breath vapour"),
+    "renskiljningen": ("reindeer roundup in a wooden corral", "milling herd, trampled snow, breath vapour"),
+    "höstfjäll": ("autumn mountain tundra", "red and orange dwarf birch, low heath, bare ridges"),
+    "höstfjället": ("autumn mountain tundra", "red and orange dwarf birch, low heath, bare ridges"),
+    "fjällhed": ("mountain heath", "low red and orange shrubs, lichen, scattered stones"),
+    "fjällheden": ("mountain heath", "low red and orange shrubs, lichen, scattered stones"),
+    "vinterskog": ("winter forest", "snow-laden branches, muffled light"),
+    "vinterskogen": ("winter forest", "snow-laden branches, muffled light"),
+    "skogsväg": ("forest road", "tyre tracks, trees closing in on both sides"),
+    "skogsvägen": ("forest road", "tyre tracks, trees closing in on both sides"),
+    "solnedgången": ("sunset", "low orange sun, long shadows, glowing horizon"),
     "räv": ("red fox", "dense red fur, bushy white-tipped tail"),
     "räven": ("red fox", "dense red fur, bushy white-tipped tail"),
     "varg": ("grey wolf", "thick grey fur, amber eyes"),
@@ -226,6 +257,14 @@ for k in ("kafé", "kafét", "kaféet", "kafe", "café", "kaféer", "kaféerna",
     if k in nouns:
         nouns[k] = "cafe interior"
 c["nouns"] = nouns
+# 10-02: "ren" ar bade djuret och adjektivet ("en ren skjorta" gav "reindeer"). Ett tvetydigt ord raknas bara nar
+# det star som substantiv: foljt av slutet, ett skiljetecken eller ett av orden i "after", och inte foregaget av
+# ett ord i "not_before" ("skjortan ar ren"). Bojda former (renar, renen, renarna) ar entydiga och berors inte.
+c["ambiguous"] = {"ren": {
+    "after": ["i", "på", "vid", "under", "över", "framför", "bakom", "bland", "mellan", "med", "utan", "som", "och", "eller", "från", "till", "mot",
+              "genom", "längs", "nära", "intill", "bredvid", "ovanför", "nedanför", "står", "stående", "går", "gående", "springer", "springande",
+              "betar", "betande", "ligger", "liggande", "tittar", "vandrar", "dricker", "äter", "ser"],
+    "not_before": ["är", "var", "blev", "blir", "helt", "mycket", "väldigt", "riktigt", "så", "lika", "alldeles", "inte"]}}
 c["budget_tokens"] = 90   # 09-28: 50 -> 70 sa prinsesstartan far plats; 90 sa tartbitens sylt+kram far plats
 c["_about"] = c["_about"].rstrip() + (" Swedish keys point at the same (English) fragments as their English"
                                       " counterparts; inflected forms are listed explicitly.") \
